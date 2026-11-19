@@ -1,0 +1,33 @@
+{
+  "RenderMode": "BlendLinear",
+  "LightInfluence": 0.35,
+  "SpawnBurst": true,
+  "TotalParticles": { "Min": 1, "Max": 1 },
+  "MaxConcurrentParticles": 1,
+  "ParticleLifeSpan": { "Min": 0.35, "Max": 0.5 },
+  "EmitOffset": {
+    "X": { "Min": -0.16, "Max": 0.16 },
+    "Z": { "Min": -0.16, "Max": 0.16 }
+  },
+  "Particle": {
+    "Texture": "Particles/Textures/Circles/Water_Circle.png",
+    "FrameSize": { "Width": 128, "Height": 128 },
+    "ScaleRatioConstraint": "OneToOne",
+    "InitialAnimationFrame": {
+      "Color": "#ffffff",
+      "Scale": { "X": { "Min": 0.16, "Max": 0.23 } },
+      "Rotation": {
+        "X": { "Min": 90, "Max": 90 },
+        "Z": { "Min": 90, "Max": 90 }
+      },
+      "FrameIndex": { "Min": 0, "Max": 0 }
+    },
+    "Animation": {
+      "0": { "Opacity": 0.48 },
+      "100": {
+        "Opacity": 0,
+        "Scale": { "X": { "Min": 1.8, "Max": 1.8 } }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "Parent": "Boat",
+  "AnimationSets": {
+    "ImmersiveBoats_Boat_Paddle_Pitch_Slow": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Paddle_Pitch_Slow.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.4
+        }
+      ]
+    },
+    "ImmersiveBoats_Boat_Paddle_Pitch": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Paddle_Pitch.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.4
+        }
+      ]
+    },
+    "ImmersiveBoats_Boat_Paddle_Pitch_Fast": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Paddle_Pitch_Fast.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.4
+        }
+      ]
+    }
+  }
+}

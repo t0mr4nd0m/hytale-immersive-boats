@@ -1,0 +1,14 @@
+volume.description = Check or adjust your rowing sound volume.
+volume.setDescription = Set your rowing sound volume.
+volume.percentage = Volume from 0 to 100 percent
+volume.current = Your rowing volume is {percent, number}%. To change it, use a command such as {example}.
+volume.outOfRange = Enter a volume between 0 and 100.
+volume.saved = Rowing volume set to {percent, number}%.
+volume.saveFailed = Your rowing volume could not be saved.
+opacity.description = Check or adjust the opacity of boat foam.
+opacity.setDescription = Set the opacity of boat foam.
+opacity.percentage = Opacity from 0 to 100 percent
+opacity.current = Your boat foam opacity is {percent, number}%. To change it, use a command such as {example}.
+opacity.outOfRange = Enter an opacity between 0 and 100.
+opacity.saved = Boat foam opacity set to {percent, number}%.
+opacity.saveFailed = Your boat foam opacity could not be saved.

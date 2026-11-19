@@ -1,0 +1,17 @@
+{
+  "Group": "${project.groupId}",
+  "Name": "${project.name}",
+  "Version": "${project.version}",
+  "Main": "org.immersiveboats.ImmersiveBoatsPlugin",
+  "ServerVersion": "${hytale.version}",
+  "Description": "${project.description}",
+  "IncludesAssetPack": true,
+  "Dependencies": {
+    "Hytale:Mounts": "*"
+  },
+  "Authors": [
+    {
+      "Name": "T0mR4nD0m"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+/target/
+/.hytale-server/
+/.idea/
+*.iml
+/out/
+/run-server.ps1
+/.run/Run Hytale Server.run.xml
+/.run/Start Hytale for Debugging.run.xml
