@@ -21,6 +21,7 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
         var registry = getEntityStoreRegistry();
         var wakeState = registry.registerComponent(BoatWakeSystem.WakeState.class, BoatWakeSystem.WakeState::new);
         registry.registerSystem(new BoatWakeSystem(wakeState, volumes, opacities));
+        registry.registerSystem(new BoatPickupSystem());
     }
 
     private PlayerPercentages registerPreference(String command, String translationKey, String fileName) {

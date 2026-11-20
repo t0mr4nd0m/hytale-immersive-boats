@@ -1,11 +1,21 @@
 # Immersive Boats
 
-Immersive Boats brings Hytale’s boats to life with subtle effects on the water:
-- Foam wakes as you maneuver
-- Soft splashes as you row
-- Gentle pitching while rowing and side-to-side rocking at rest
+Immersive Boats adds rowing effects and makes it easier to pick up Hytale’s boats.
 
-# Configuration
+## Effects on the water
+
+- Foam wakes as you maneuver.
+- Soft splashes as you row.
+- Gentle pitching while rowing and side-to-side rocking at rest.
+
+## Boat interactions
+
+Press **F** (the default interaction key) to interact with a boat.
+
+- If the boat can still sail, you board it as usual.
+- If the boat is fully ashore or stranded at the shoreline, you directly pick it up. If your inventory is full, it drops as an item where the boat was.
+
+## Configuration
 
 Use `/rowing_volume` to check your current volume or `/rowing_volume 50` to set it to 50%. At 100%, you hear the original volume. At 0%, rowing sounds are muted just for you. The server remembers your preference when you reconnect. Command messages and help use the client's language, with English as the fallback.
 
