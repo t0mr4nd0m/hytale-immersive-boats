@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 import javax.annotation.Nonnull;
 
+@SuppressWarnings("unused")
 public class ImmersiveBoatsPlugin extends JavaPlugin {
 
     public ImmersiveBoatsPlugin(@Nonnull JavaPluginInit init) {

@@ -12,6 +12,7 @@ import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 
 import java.io.IOException;
+import javax.annotation.Nonnull;
 
 final class PlayerPercentageCommand extends AbstractPlayerCommand {
     private final String command;
@@ -28,8 +29,8 @@ final class PlayerPercentageCommand extends AbstractPlayerCommand {
     }
 
     @Override
-    protected void execute(CommandContext context, Store<EntityStore> store, Ref<EntityStore> ref,
-                           PlayerRef player, World world) {
+    protected void execute(@Nonnull CommandContext context, @Nonnull Store<EntityStore> store,
+                           @Nonnull Ref<EntityStore> ref, @Nonnull PlayerRef player, @Nonnull World world) {
         player.sendMessage(Message.translation(translations + "current")
                 .param("percent", preferences.get(player.getUuid()))
                 .param("example", "/" + command + " 50"));
@@ -49,8 +50,8 @@ final class PlayerPercentageCommand extends AbstractPlayerCommand {
         }
 
         @Override
-        protected void execute(CommandContext context, Store<EntityStore> store, Ref<EntityStore> ref,
-                               PlayerRef player, World world) {
+        protected void execute(@Nonnull CommandContext context, @Nonnull Store<EntityStore> store,
+                               @Nonnull Ref<EntityStore> ref, @Nonnull PlayerRef player, @Nonnull World world) {
             int value = context.get(percent);
             if (value < 0 || value > PlayerPercentages.DEFAULT) {
                 player.sendMessage(Message.translation(translations + "outOfRange"));

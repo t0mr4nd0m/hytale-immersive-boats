@@ -33,6 +33,7 @@ import org.joml.Vector3d;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import javax.annotation.Nonnull;
 
 final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private static final String PARTICLE = "ImmersiveBoats_Boat_Wake";
@@ -88,7 +89,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
 
     @Override
     public void tick(float dt, int index, ArchetypeChunk<EntityStore> chunk,
-                     Store<EntityStore> store, CommandBuffer<EntityStore> commands) {
+                     @Nonnull Store<EntityStore> store, @Nonnull CommandBuffer<EntityStore> commands) {
         var boat = chunk.getReferenceTo(index);
         var riders = chunk.getComponent(index, MountedByComponent.getComponentType());
         var driver = riders == null ? null : riders.getPassengerInSeat(MountedComponent.DRIVER_SEAT_INDEX, commands);
@@ -102,6 +103,9 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         }
 
         var transform = chunk.getComponent(index, TransformComponent.getComponentType());
+        if (transform == null) {
+            return;
+        }
         var position = transform.getPosition();
         double yaw = transform.getRotation().yaw();
         if (state == null) {
@@ -136,10 +140,9 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
 
         double headingX = Math.sin(yaw);
         double headingZ = Math.cos(yaw);
-        double sideX = headingZ;
         double sideZ = -headingX;
         boolean advancing = Math.abs(dx * headingX + dz * headingZ) >= MIN_TRAVEL;
-        double sideTravel = dx * sideX + dz * sideZ;
+        double sideTravel = dx * headingZ + dz * sideZ;
         boolean turning = Math.abs(turn) >= MIN_TURN;
         if (!advancing && !turning && Math.abs(sideTravel) < MIN_SIDE_TRAVEL) {
             updatePitch(boat, state, false, speedFraction, dt, commands);
@@ -158,7 +161,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             var random = ThreadLocalRandom.current();
             int sound = SoundEvent.getAssetMap().getIndex(PADDLE_SOUND);
             if (sound > 0) {
-                var paddlePosition = new Vector3d(position.x + sideX * state.paddleSide * SIDE_OFFSET,
+                var paddlePosition = new Vector3d(position.x + headingZ * state.paddleSide * SIDE_OFFSET,
                         surface + 0.05, position.z + sideZ * state.paddleSide * SIDE_OFFSET);
                 playPaddleSound(sound, paddlePosition,
                         (float) random.nextDouble(MIN_PADDLE_PITCH, MAX_PADDLE_PITCH), commands);
@@ -184,11 +187,11 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         // As the hull pivots, opposite ends sweep water on opposite sides.
         double turnOffset = turning ? Math.copySign(TURN_OFFSET, turn) : 0;
         if (turning || sideTravel >= MIN_SIDE_TRAVEL) {
-            emitFoam(chunks, commands, position.x + sideX * SIDE_OFFSET + headingX * turnOffset,
+            emitFoam(chunks, commands, position.x + headingZ * SIDE_OFFSET + headingX * turnOffset,
                     position.y, position.z + sideZ * SIDE_OFFSET + headingZ * turnOffset);
         }
         if (turning || sideTravel <= -MIN_SIDE_TRAVEL) {
-            emitFoam(chunks, commands, position.x - sideX * SIDE_OFFSET - headingX * turnOffset,
+            emitFoam(chunks, commands, position.x - headingZ * SIDE_OFFSET - headingX * turnOffset,
                     position.y, position.z - sideZ * SIDE_OFFSET - headingZ * turnOffset);
         }
     }
@@ -319,7 +322,8 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             int opacity = opacities.get(player.getUuid());
             if (opacity > 0) {
                 String effect = opacity == PlayerPercentages.DEFAULT ? particle : particle + "_" + opacity;
-                ParticleUtil.spawnParticleEffect(effect, position, 0, 0, 0, scale, null, List.of(viewer), commands);
+                ParticleUtil.spawnParticleEffect(effect, position.x, position.y, position.z,
+                        0, 0, 0, scale, null, null, List.of(viewer), commands);
             }
         }
     }
@@ -361,7 +365,9 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         private float pitchGrace;
 
         @Override
+        @SuppressWarnings("MethodDoesntCallSuperMethod")
         public WakeState clone() {
+            // Allocate a separate position vector for the copy.
             var copy = new WakeState();
             copy.previous.set(previous);
             copy.previousYaw = previousYaw;
