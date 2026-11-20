@@ -42,8 +42,9 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private static final String PADDLE_PITCH_ANIMATION = "ImmersiveBoats_Boat_Paddle_Pitch";
     private static final String SLOW_PITCH_ANIMATION = "ImmersiveBoats_Boat_Paddle_Pitch_Slow";
     private static final String FAST_PITCH_ANIMATION = "ImmersiveBoats_Boat_Paddle_Pitch_Fast";
-    private static final List<String> PITCH_ANIMATIONS =
-            List.of(SLOW_PITCH_ANIMATION, PADDLE_PITCH_ANIMATION, FAST_PITCH_ANIMATION);
+    private static final String IDLE_ROLL_ANIMATION = "ImmersiveBoats_Boat_Idle_Roll";
+    private static final List<String> BOAT_ANIMATIONS =
+            List.of(SLOW_PITCH_ANIMATION, PADDLE_PITCH_ANIMATION, FAST_PITCH_ANIMATION, IDLE_ROLL_ANIMATION);
     private static final String PADDLE_PITCH_MODEL = "ImmersiveBoats_Boat_Pitch";
     private static final float PITCH_CYCLE_SECONDS = 2.4f;
     private static final float PITCH_STOP_GRACE_SECONDS = 0.30f;
@@ -58,15 +59,21 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private static final double FAST_PADDLE_RATE = 1.30;
     private static final float SLOW_SPLASH_SCALE = 0.75f;
     private static final float FAST_SPLASH_SCALE = 1.20f;
+    private static final double HULL_END_FOAM_OFFSET = 1.0;
     private static final double SPEED_SMOOTHING_SECONDS = 0.35;
     private static final double MIN_TRAVEL = 0.04;
     private static final double MAX_TRAVEL = 3.0;
     private static final double MIN_SIDE_TRAVEL = 0.035;
     private static final double MIN_TURN = Math.toRadians(1.5);
-    private static final double TRAIL_OFFSET = 1.45;
-    private static final double TRAIL_HALF_WIDTH = 0.45;
+    private static final double LEADING_FOAM_HALF_WIDTH = 0.45;
     private static final double SIDE_OFFSET = 1.0;
     private static final double TURN_OFFSET = 0.65;
+    private static final float IDLE_DELAY_SECONDS = 0.5f;
+    private static final double MAX_IDLE_SPEED = 0.05;
+    private static final double MAX_IDLE_TURN_SPEED = Math.toRadians(2);
+    private static final double HULL_HALF_WIDTH = 0.45;
+    private static final double HULL_HALF_LENGTH = 0.77;
+    private static final double HULL_CENTER_OFFSET = 0.23;
 
     private final ComponentType<EntityStore, WakeState> wakeState;
     private final PlayerPercentages volumes;
@@ -91,16 +98,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     public void tick(float dt, int index, ArchetypeChunk<EntityStore> chunk,
                      @Nonnull Store<EntityStore> store, @Nonnull CommandBuffer<EntityStore> commands) {
         var boat = chunk.getReferenceTo(index);
-        var riders = chunk.getComponent(index, MountedByComponent.getComponentType());
-        var driver = riders == null ? null : riders.getPassengerInSeat(MountedComponent.DRIVER_SEAT_INDEX, commands);
         var state = chunk.getComponent(index, wakeState);
-        if (driver == null || !driver.isValid() || commands.getComponent(driver, PlayerRef.getComponentType()) == null) {
-            if (state != null) {
-                stopPitch(boat, state, commands);
-                commands.removeComponent(boat, wakeState);
-            }
-            return;
-        }
 
         var transform = chunk.getComponent(index, TransformComponent.getComponentType());
         if (transform == null) {
@@ -113,7 +111,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             state.previous.set(position);
             state.previousYaw = yaw;
             commands.addComponent(boat, wakeState, state);
-            attachPitchAnimation(boat, chunk.getComponent(index, ModelComponent.getComponentType()), commands);
+            attachBoatAnimations(boat, chunk.getComponent(index, ModelComponent.getComponentType()), commands);
             return;
         }
 
@@ -124,6 +122,27 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         state.previous.set(position);
         state.previousYaw = yaw;
         double travel = Math.hypot(dx, dz);
+        double headingX = Math.sin(yaw);
+        double headingZ = Math.cos(yaw);
+        var chunks = store.getExternalData().getWorld().getChunkStore();
+        boolean still = Math.hypot(travel, dy) <= MAX_IDLE_SPEED * dt
+                && Math.abs(turn) <= MAX_IDLE_TURN_SPEED * dt;
+        updateIdleRoll(boat, state, still, dt, chunks, position, headingX, headingZ, commands);
+
+        var riders = chunk.getComponent(index, MountedByComponent.getComponentType());
+        var driver = riders == null ? null : riders.getPassengerInSeat(MountedComponent.DRIVER_SEAT_INDEX, commands);
+        if (driver == null || !driver.isValid() || commands.getComponent(driver, PlayerRef.getComponentType()) == null) {
+            state.paddleSpeed = 0;
+            state.paddleCooldown = 0;
+            state.paddleSide = 1;
+            if (!IDLE_ROLL_ANIMATION.equals(state.pitchAnimation)) {
+                stopPitch(boat, state, commands);
+            }
+            return;
+        }
+        if (IDLE_ROLL_ANIMATION.equals(state.pitchAnimation)) {
+            return;
+        }
         if (travel > MAX_TRAVEL || Math.abs(dy) > 1.0) {
             state.paddleSpeed = 0;
             stopPitch(boat, state, commands);
@@ -138,10 +157,9 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
                 + speedFraction * (FAST_PADDLE_RATE - SLOW_PADDLE_RATE)));
         state.paddleCooldown = Math.max(-paddleElapsed, state.paddleCooldown - paddleElapsed);
 
-        double headingX = Math.sin(yaw);
-        double headingZ = Math.cos(yaw);
         double sideZ = -headingX;
-        boolean advancing = Math.abs(dx * headingX + dz * headingZ) >= MIN_TRAVEL;
+        double longitudinalTravel = dx * headingX + dz * headingZ;
+        boolean advancing = Math.abs(longitudinalTravel) >= MIN_TRAVEL;
         double sideTravel = dx * headingZ + dz * sideZ;
         boolean turning = Math.abs(turn) >= MIN_TURN;
         if (!advancing && !turning && Math.abs(sideTravel) < MIN_SIDE_TRAVEL) {
@@ -149,7 +167,6 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             return;
         }
 
-        var chunks = store.getExternalData().getWorld().getChunkStore();
         double surface = waterSurface(chunks, position.x, position.y, position.z);
         if (Double.isNaN(surface)) {
             stopPitch(boat, state, commands);
@@ -174,14 +191,13 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         }
 
         if (advancing) {
-            double forwardX = dx / travel;
-            double forwardZ = dz / travel;
-            double trailX = position.x - forwardX * TRAIL_OFFSET;
-            double trailZ = position.z - forwardZ * TRAIL_OFFSET;
-            emitFoam(chunks, commands, trailX - forwardZ * TRAIL_HALF_WIDTH,
-                    position.y, trailZ + forwardX * TRAIL_HALF_WIDTH);
-            emitFoam(chunks, commands, trailX + forwardZ * TRAIL_HALF_WIDTH,
-                    position.y, trailZ - forwardX * TRAIL_HALF_WIDTH);
+            double foamOffset = Math.copySign(HULL_END_FOAM_OFFSET, longitudinalTravel);
+            double foamX = position.x + headingX * foamOffset;
+            double foamZ = position.z + headingZ * foamOffset;
+            emitFoam(chunks, commands, foamX - headingZ * LEADING_FOAM_HALF_WIDTH,
+                    position.y, foamZ - sideZ * LEADING_FOAM_HALF_WIDTH);
+            emitFoam(chunks, commands, foamX + headingZ * LEADING_FOAM_HALF_WIDTH,
+                    position.y, foamZ + sideZ * LEADING_FOAM_HALF_WIDTH);
         }
 
         // As the hull pivots, opposite ends sweep water on opposite sides.
@@ -241,14 +257,63 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         state.pitchGrace = 0;
     }
 
-    private static void attachPitchAnimation(Ref<EntityStore> boat, ModelComponent component,
+    private static void updateIdleRoll(Ref<EntityStore> boat, WakeState state, boolean still, float dt,
+                                       ChunkStore chunks, Vector3d position, double headingX, double headingZ,
+                                       CommandBuffer<EntityStore> commands) {
+        state.idleTime = still ? Math.min(IDLE_DELAY_SECONDS, state.idleTime + dt) : 0;
+        boolean rolling = IDLE_ROLL_ANIMATION.equals(state.pitchAnimation);
+        if (state.idleTime < IDLE_DELAY_SECONDS || !hullOverWater(chunks, position, headingX, headingZ)) {
+            if (rolling) {
+                stopPitch(boat, state, commands);
+            }
+            return;
+        }
+        if (rolling || commands.getComponent(boat, NetworkId.getComponentType()) == null) {
+            return;
+        }
+        var model = commands.getComponent(boat, ModelComponent.getComponentType());
+        if (model != null && model.getModel().getAnimationSetMap().containsKey(IDLE_ROLL_ANIMATION)) {
+            AnimationUtils.playAnimation(boat, AnimationSlot.ServerAction, IDLE_ROLL_ANIMATION, true, commands);
+            state.pitchAnimation = IDLE_ROLL_ANIMATION;
+        } else {
+            attachBoatAnimations(boat, model, commands);
+        }
+    }
+
+    private static boolean hullOverWater(ChunkStore chunks, Vector3d position, double headingX, double headingZ) {
+        // The vanilla boat hitbox extends from Z -0.54 to 1.00 and from X -0.45 to 0.45.
+        double centerX = position.x + headingX * HULL_CENTER_OFFSET;
+        double centerZ = position.z + headingZ * HULL_CENTER_OFFSET;
+        double absX = Math.abs(headingX);
+        double absZ = Math.abs(headingZ);
+        double extentX = HULL_HALF_LENGTH * absX + HULL_HALF_WIDTH * absZ;
+        double extentZ = HULL_HALF_LENGTH * absZ + HULL_HALF_WIDTH * absX;
+        double blockRadius = 0.5 * (absX + absZ);
+        int maxX = (int) Math.ceil(centerX + extentX);
+        int maxZ = (int) Math.ceil(centerZ + extentZ);
+        for (int x = (int) Math.floor(centerX - extentX); x < maxX; x++) {
+            for (int z = (int) Math.floor(centerZ - extentZ); z < maxZ; z++) {
+                // The loop bounds test the world axes. These two projections test the hull axes.
+                double dx = x + 0.5 - centerX;
+                double dz = z + 0.5 - centerZ;
+                if (Math.abs(dx * headingX + dz * headingZ) < HULL_HALF_LENGTH + blockRadius
+                        && Math.abs(dx * headingZ - dz * headingX) < HULL_HALF_WIDTH + blockRadius
+                        && Double.isNaN(waterSurface(chunks, x + 0.5, position.y, z + 0.5))) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private static void attachBoatAnimations(Ref<EntityStore> boat, ModelComponent component,
                                              CommandBuffer<EntityStore> commands) {
         if (component == null) {
             return;
         }
         Model original = component.getModel();
         if (!"Boat".equals(original.getModelAssetId())
-                || original.getAnimationSetMap().keySet().containsAll(PITCH_ANIMATIONS)) {
+                || original.getAnimationSetMap().keySet().containsAll(BOAT_ANIMATIONS)) {
             return;
         }
         var source = ModelAsset.getAssetMap().getAsset(PADDLE_PITCH_MODEL);
@@ -257,12 +322,12 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         }
 
         var animations = new HashMap<>(original.getAnimationSetMap());
-        for (String animation : PITCH_ANIMATIONS) {
-            var pitch = source.getAnimationSetMap().get(animation);
-            if (pitch == null) {
+        for (String animation : BOAT_ANIMATIONS) {
+            var animationSet = source.getAnimationSetMap().get(animation);
+            if (animationSet == null) {
                 return;
             }
-            animations.put(animation, pitch);
+            animations.put(animation, animationSet);
         }
         // Keep the original asset ID and model data so the saved reference still points to the vanilla boat.
         var animated = new Model(original.getModelAssetId(), original.getScale(), original.getRandomAttachmentIds(),
@@ -363,6 +428,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         private String pitchAnimation;
         private float pitchCycleRemaining;
         private float pitchGrace;
+        private float idleTime;
 
         @Override
         @SuppressWarnings("MethodDoesntCallSuperMethod")
@@ -377,6 +443,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             copy.pitchAnimation = pitchAnimation;
             copy.pitchCycleRemaining = pitchCycleRemaining;
             copy.pitchGrace = pitchGrace;
+            copy.idleTime = idleTime;
             return copy;
         }
     }

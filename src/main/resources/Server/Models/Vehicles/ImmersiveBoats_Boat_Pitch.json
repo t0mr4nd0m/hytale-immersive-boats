@@ -19,6 +19,15 @@
         }
       ]
     },
+    "ImmersiveBoats_Boat_Idle_Roll": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Idle_Roll.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.4
+        }
+      ]
+    },
     "ImmersiveBoats_Boat_Paddle_Pitch_Fast": {
       "Animations": [
         {

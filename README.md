@@ -1,10 +1,11 @@
 # Immersive Boats
 
-Immersive Boats adds foam wakes, rowing sounds, and gentle pitching to boats in Hytale **0.8.0-pre.6**.
+Immersive Boats brings Hytale’s boats to life with subtle effects on the water:
+- Foam wakes as you maneuver
+- Soft splashes as you row
+- Gentle pitching while rowing and side-to-side rocking at rest
 
-To check the wake, take a wooden boat out on the water. Turning in place produces foam on both sides. Drifting sideways produces foam on the side the boat is moving toward. The foam fades when the boat stops or you get out.
-
-As you move forward or turn in the water, you'll hear soft splashes that alternate between the two sides. The rowing sounds stop when the boat stops.
+# Configuration
 
 Use `/rowing_volume` to check your current volume or `/rowing_volume 50` to set it to 50%. At 100%, you hear the original volume. At 0%, rowing sounds are muted just for you. The server remembers your preference when you reconnect. Command messages and help use the client's language, with English as the fallback.
 
