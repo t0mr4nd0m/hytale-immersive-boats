@@ -18,9 +18,11 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
     protected void setup() {
         var volumes = registerPreference("rowing_volume", "volume", "paddle-volumes.properties");
         var opacities = registerPreference("rowing_opacity", "opacity", "foam-opacities.properties");
+        var motion = new BoatMotionPreferences(loadMotionPreference("idle-roll.properties"),
+                loadMotionPreference("rowing-pitch.properties"));
         var registry = getEntityStoreRegistry();
         var wakeState = registry.registerComponent(BoatWakeSystem.WakeState.class, BoatWakeSystem.WakeState::new);
-        registry.registerSystem(new BoatWakeSystem(wakeState, volumes, opacities));
+        registry.registerSystem(new BoatWakeSystem(wakeState, volumes, opacities, motion));
         var interactionFile = getDataDirectory().resolve("land-interactions.properties");
         var interactions = new PlayerPreferences<>(interactionFile, LandInteraction.PICK_UP,
                 LandInteraction::parseSaved, LandInteraction::argument);
@@ -30,7 +32,20 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
             getLogger().at(Level.WARNING).withCause(e).log("Could not load player boat interactions");
         }
         getCommandRegistry().registerCommand(new BoatModeCommand(interactions));
+        getCommandRegistry().registerCommand(new BoatSettingsCommand(volumes, opacities, interactions, motion));
         registry.registerSystem(new BoatPickupSystem(interactions));
+    }
+
+    private PlayerPreferences<Boolean> loadMotionPreference(String fileName) {
+        var file = getDataDirectory().resolve(fileName);
+        var preference = new PlayerPreferences<>(file, true,
+                saved -> "false".equalsIgnoreCase(saved) ? Boolean.FALSE : null, String::valueOf);
+        try {
+            preference.load(file);
+        } catch (IOException | IllegalArgumentException e) {
+            getLogger().at(Level.WARNING).withCause(e).log("Could not load player preferences from %s", fileName);
+        }
+        return preference;
     }
 
     private PlayerPercentages registerPreference(String command, String translationKey, String fileName) {

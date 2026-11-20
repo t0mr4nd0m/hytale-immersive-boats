@@ -14,6 +14,7 @@ import com.hypixel.hytale.component.spatial.SpatialResource;
 import com.hypixel.hytale.component.system.tick.DelayedEntitySystem;
 import com.hypixel.hytale.protocol.AnimationSlot;
 import com.hypixel.hytale.protocol.SoundCategory;
+import com.hypixel.hytale.protocol.packets.entities.PlayAnimation;
 import com.hypixel.hytale.server.core.asset.type.model.config.Model;
 import com.hypixel.hytale.server.core.asset.type.model.config.ModelAsset;
 import com.hypixel.hytale.server.core.asset.type.soundevent.config.SoundEvent;
@@ -21,6 +22,7 @@ import com.hypixel.hytale.server.core.entity.AnimationUtils;
 import com.hypixel.hytale.server.core.modules.entity.EntityModule;
 import com.hypixel.hytale.server.core.modules.entity.component.ModelComponent;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
+import com.hypixel.hytale.server.core.modules.entity.tracker.EntityTrackerSystems;
 import com.hypixel.hytale.server.core.modules.entity.tracker.NetworkId;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.ParticleUtil;
@@ -31,7 +33,9 @@ import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import org.joml.Vector3d;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nonnull;
 
@@ -78,15 +82,17 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private final ComponentType<EntityStore, WakeState> wakeState;
     private final PlayerPercentages volumes;
     private final PlayerPercentages opacities;
+    private final BoatMotionPreferences motion;
     private final Query<EntityStore> query = Query.and(
             BoatComponent.getComponentType(), TransformComponent.getComponentType());
 
     BoatWakeSystem(ComponentType<EntityStore, WakeState> wakeState, PlayerPercentages volumes,
-                   PlayerPercentages opacities) {
+                   PlayerPercentages opacities, BoatMotionPreferences motion) {
         super(0.10f);
         this.wakeState = wakeState;
         this.volumes = volumes;
         this.opacities = opacities;
+        this.motion = motion;
     }
 
     @Override
@@ -127,21 +133,31 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         var chunks = store.getExternalData().getWorld().getChunkStore();
         boolean still = Math.hypot(travel, dy) <= MAX_IDLE_SPEED * dt
                 && Math.abs(turn) <= MAX_IDLE_TURN_SPEED * dt;
-        updateIdleRoll(boat, state, still, dt, chunks, position, headingX, headingZ, commands);
-
         var riders = chunk.getComponent(index, MountedByComponent.getComponentType());
         var driver = riders == null ? null : riders.getPassengerInSeat(MountedComponent.DRIVER_SEAT_INDEX, commands);
-        if (driver == null || !driver.isValid() || commands.getComponent(driver, PlayerRef.getComponentType()) == null) {
+        var driverPlayer = driver == null || !driver.isValid()
+                ? null : commands.getComponent(driver, PlayerRef.getComponentType());
+        boolean idleRoll = driverPlayer == null || motion.idleRoll().get(driverPlayer.getUuid());
+        state.idleTime = idleRoll && still ? Math.min(IDLE_DELAY_SECONDS, state.idleTime + dt) : 0;
+        boolean idle = state.idleTime >= IDLE_DELAY_SECONDS
+                && hullOverWater(chunks, position, headingX, headingZ);
+        if (idle || driverPlayer == null) {
+            stopPitch(boat, state, commands);
+        }
+        updateIdleRoll(boat, state, idle, driverPlayer == null, commands);
+
+        if (driverPlayer == null) {
             state.paddleSpeed = 0;
             state.paddleCooldown = 0;
             state.paddleSide = 1;
-            if (!IDLE_ROLL_ANIMATION.equals(state.pitchAnimation)) {
-                stopPitch(boat, state, commands);
-            }
             return;
         }
-        if (IDLE_ROLL_ANIMATION.equals(state.pitchAnimation)) {
+        if (idle) {
             return;
+        }
+        boolean rowingPitch = motion.rowingPitch().get(driverPlayer.getUuid());
+        if (!rowingPitch && state.pitchAnimation != null) {
+            stopPitch(boat, state, commands);
         }
         if (travel > MAX_TRAVEL || Math.abs(dy) > 1.0) {
             state.paddleSpeed = 0;
@@ -163,7 +179,9 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         double sideTravel = dx * headingZ + dz * sideZ;
         boolean turning = Math.abs(turn) >= MIN_TURN;
         if (!advancing && !turning && Math.abs(sideTravel) < MIN_SIDE_TRAVEL) {
-            updatePitch(boat, state, false, speedFraction, dt, commands);
+            if (rowingPitch) {
+                updatePitch(boat, state, false, speedFraction, dt, commands);
+            }
             return;
         }
 
@@ -173,7 +191,9 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             return;
         }
 
-        updatePitch(boat, state, advancing, speedFraction, dt, commands);
+        if (rowingPitch) {
+            updatePitch(boat, state, advancing, speedFraction, dt, commands);
+        }
         if ((advancing || turning) && state.paddleCooldown <= 0) {
             var random = ThreadLocalRandom.current();
             int sound = SoundEvent.getAssetMap().getIndex(PADDLE_SOUND);
@@ -257,26 +277,43 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         state.pitchGrace = 0;
     }
 
-    private static void updateIdleRoll(Ref<EntityStore> boat, WakeState state, boolean still, float dt,
-                                       ChunkStore chunks, Vector3d position, double headingX, double headingZ,
-                                       CommandBuffer<EntityStore> commands) {
-        state.idleTime = still ? Math.min(IDLE_DELAY_SECONDS, state.idleTime + dt) : 0;
-        boolean rolling = IDLE_ROLL_ANIMATION.equals(state.pitchAnimation);
-        if (state.idleTime < IDLE_DELAY_SECONDS || !hullOverWater(chunks, position, headingX, headingZ)) {
-            if (rolling) {
-                stopPitch(boat, state, commands);
+    private void updateIdleRoll(Ref<EntityStore> boat, WakeState state, boolean idle, boolean unoccupied,
+                                CommandBuffer<EntityStore> commands) {
+        if (!idle && state.idleRollViewers.isEmpty()) {
+            return;
+        }
+        var visibility = commands.getComponent(boat, EntityTrackerSystems.Visible.getComponentType());
+        var networkId = commands.getComponent(boat, NetworkId.getComponentType());
+        if (visibility == null || networkId == null) {
+            state.idleRollViewers.clear();
+            return;
+        }
+
+        state.idleRollViewers.retainAll(visibility.visibleTo.keySet());
+        if (idle) {
+            var model = commands.getComponent(boat, ModelComponent.getComponentType());
+            if (model == null || !model.getModel().getAnimationSetMap().containsKey(IDLE_ROLL_ANIMATION)) {
+                attachBoatAnimations(boat, model, commands);
+                idle = false;
             }
-            return;
         }
-        if (rolling || commands.getComponent(boat, NetworkId.getComponentType()) == null) {
-            return;
-        }
-        var model = commands.getComponent(boat, ModelComponent.getComponentType());
-        if (model != null && model.getModel().getAnimationSetMap().containsKey(IDLE_ROLL_ANIMATION)) {
-            AnimationUtils.playAnimation(boat, AnimationSlot.ServerAction, IDLE_ROLL_ANIMATION, true, commands);
-            state.pitchAnimation = IDLE_ROLL_ANIMATION;
-        } else {
-            attachBoatAnimations(boat, model, commands);
+        for (var viewer : visibility.visibleTo.keySet()) {
+            var player = viewer.isValid() ? commands.getComponent(viewer, PlayerRef.getComponentType()) : null;
+            if (player == null) {
+                continue;
+            }
+            boolean shouldRoll = idle && (!unoccupied || motion.idleRoll().get(player.getUuid()));
+            if (shouldRoll == state.idleRollViewers.contains(viewer)) {
+                continue;
+            }
+            String animation = shouldRoll ? IDLE_ROLL_ANIMATION : null;
+            player.getPacketHandler().writeNoCache(
+                    new PlayAnimation(networkId.getId(), null, animation, AnimationSlot.ServerAction));
+            if (shouldRoll) {
+                state.idleRollViewers.add(viewer);
+            } else {
+                state.idleRollViewers.remove(viewer);
+            }
         }
     }
 
@@ -429,6 +466,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         private float pitchCycleRemaining;
         private float pitchGrace;
         private float idleTime;
+        private final Set<Ref<EntityStore>> idleRollViewers = new HashSet<>();
 
         @Override
         @SuppressWarnings("MethodDoesntCallSuperMethod")
@@ -444,6 +482,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             copy.pitchCycleRemaining = pitchCycleRemaining;
             copy.pitchGrace = pitchGrace;
             copy.idleTime = idleTime;
+            copy.idleRollViewers.addAll(idleRollViewers);
             return copy;
         }
     }

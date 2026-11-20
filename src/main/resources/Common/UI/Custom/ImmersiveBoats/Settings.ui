@@ -1,0 +1,85 @@
+$C = "../Common.ui";
+
+@SettingLabel = Label {
+  FlexWeight: 1;
+  Style: (...$C.@DefaultLabelStyle, FontSize: 16, VerticalAlignment: Center);
+};
+
+@SettingRow = Group {
+  Anchor: (Height: 54, Bottom: 8);
+  LayoutMode: Left;
+  Padding: (Horizontal: 12);
+  Background: #1e2b42;
+};
+
+@Percentage = SliderNumberField {
+  Anchor: (Width: 180, Height: 6, Right: 12);
+  SliderStyle: $C.@DefaultSliderStyle;
+  NumberFieldContainerAnchor: (Left: 12, Width: 40, Height: 22);
+  NumberFieldStyle: (...$C.@DefaultInputFieldStyle, FontSize: 15, TextColor: #e8f1ff);
+  Min: 0;
+  Max: 100;
+  Step: 1;
+};
+
+$C.@PageOverlay {
+  $C.@DecoratedContainer {
+    Anchor: (Width: 620, Height: 444);
+
+    #Title {
+      $C.@Title #Heading {
+        @Text = "Immersive Boats Settings";
+      }
+    }
+
+    #Content {
+      LayoutMode: Top;
+      Padding: (Full: 16);
+
+      @SettingRow {
+        @SettingLabel #VolumeLabel {}
+        @Percentage #Volume {}
+      }
+
+      @SettingRow {
+        @SettingLabel #OpacityLabel {}
+        @Percentage #Opacity {}
+      }
+
+      @SettingRow {
+        @SettingLabel #InteractionLabel {}
+        $C.@DropdownBox #Mode { Anchor: (Width: 180, Height: 34, Right: 12); }
+      }
+
+      @SettingRow {
+        @SettingLabel #IdleRollLabel {}
+        $C.@CheckBox #IdleRoll { Anchor: (Width: 22, Height: 22, Right: 12); }
+      }
+
+      @SettingRow {
+        @SettingLabel #RowingPitchLabel {}
+        $C.@CheckBox #RowingPitch { Anchor: (Width: 22, Height: 22, Right: 12); }
+      }
+
+      Group {
+        LayoutMode: Left;
+        Anchor: (Height: 36);
+
+        Label #Status {
+          FlexWeight: 1;
+          Style: (...$C.@DefaultLabelStyle, FontSize: 14, VerticalAlignment: Center);
+        }
+
+        $C.@TextButton #Apply {
+          @Text = "APPLY";
+          Anchor: (Width: 112, Height: 34, Right: 8);
+        }
+
+        $C.@SecondaryTextButton #Cancel {
+          @Text = "CANCEL";
+          Anchor: (Width: 112, Height: 34);
+        }
+      }
+    }
+  }
+}
