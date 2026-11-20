@@ -21,7 +21,16 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
         var registry = getEntityStoreRegistry();
         var wakeState = registry.registerComponent(BoatWakeSystem.WakeState.class, BoatWakeSystem.WakeState::new);
         registry.registerSystem(new BoatWakeSystem(wakeState, volumes, opacities));
-        registry.registerSystem(new BoatPickupSystem());
+        var interactionFile = getDataDirectory().resolve("land-interactions.properties");
+        var interactions = new PlayerPreferences<>(interactionFile, LandInteraction.PICK_UP,
+                LandInteraction::parseSaved, LandInteraction::argument);
+        try {
+            interactions.load(interactionFile);
+        } catch (IOException | IllegalArgumentException e) {
+            getLogger().at(Level.WARNING).withCause(e).log("Could not load player boat interactions");
+        }
+        getCommandRegistry().registerCommand(new BoatModeCommand(interactions));
+        registry.registerSystem(new BoatPickupSystem(interactions));
     }
 
     private PlayerPercentages registerPreference(String command, String translationKey, String fileName) {

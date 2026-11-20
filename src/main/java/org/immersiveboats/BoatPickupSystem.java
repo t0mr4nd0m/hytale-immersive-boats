@@ -25,6 +25,7 @@ import com.hypixel.hytale.server.core.modules.collision.CollisionResult;
 import com.hypixel.hytale.server.core.modules.entity.component.ModelComponent;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
 import com.hypixel.hytale.server.core.modules.entity.item.ItemComponent;
+import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.section.FluidSection;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
@@ -37,8 +38,11 @@ final class BoatPickupSystem extends EntityEventSystem<EntityStore, UseEntityEve
     // Match the draft used by Hytale's SpawnBoatInteraction. Water touching the keel still counts.
     private static final double BOAT_DRAFT = 0.09;
 
-    BoatPickupSystem() {
+    private final PlayerPreferences<LandInteraction> interactions;
+
+    BoatPickupSystem(PlayerPreferences<LandInteraction> interactions) {
         super(UseEntityEvent.Pre.class);
+        this.interactions = interactions;
     }
 
     @Override
@@ -53,6 +57,14 @@ final class BoatPickupSystem extends EntityEventSystem<EntityStore, UseEntityEve
             return;
         }
         var player = chunk.getReferenceTo(index);
+        var playerRef = commands.getComponent(player, PlayerRef.getComponentType());
+        if (playerRef == null) {
+            return;
+        }
+        var interaction = interactions.get(playerRef.getUuid());
+        if (interaction == LandInteraction.BOARD) {
+            return;
+        }
         var target = event.getTargetEntity();
         if (!target.isValid()
                 || commands.getComponent(player, MountedComponent.getComponentType()) != null
@@ -64,11 +76,12 @@ final class BoatPickupSystem extends EntityEventSystem<EntityStore, UseEntityEve
         }
 
         event.setCancelled(true);
-        // Resolve pickup at command-buffer drain so two players cannot collect the same entity.
-        commands.run(currentStore -> pickUp(currentStore, player, target));
+        // Resolve removal at command-buffer drain so two players cannot collect the same entity.
+        commands.run(currentStore -> collectBoat(currentStore, player, target, interaction));
     }
 
-    private static void pickUp(Store<EntityStore> store, Ref<EntityStore> player, Ref<EntityStore> target) {
+    private static void collectBoat(Store<EntityStore> store, Ref<EntityStore> player, Ref<EntityStore> target,
+                                    LandInteraction interaction) {
         if (!player.isValid() || !target.isValid()) {
             return;
         }
@@ -86,8 +99,11 @@ final class BoatPickupSystem extends EntityEventSystem<EntityStore, UseEntityEve
         if (!item.isValid() || item.isEmpty()) {
             return;
         }
-        var inventory = InventoryComponent.getCombined(store, player, InventoryComponent.HOTBAR_STORAGE_BACKPACK);
-        var remainder = inventory.addItemStack(item).getRemainder();
+        var remainder = item;
+        if (interaction == LandInteraction.PICK_UP) {
+            var inventory = InventoryComponent.getCombined(store, player, InventoryComponent.HOTBAR_STORAGE_BACKPACK);
+            remainder = inventory.addItemStack(item).getRemainder();
+        }
         if (!ItemStack.isEmpty(remainder)) {
             var position = new Vector3d(transform.getPosition()).add(0, 0.5, 0);
             var drop = ItemComponent.generateItemDrop(store, remainder, position, transform.getRotation(), 0, 1, 0);
