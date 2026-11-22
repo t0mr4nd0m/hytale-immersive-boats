@@ -31,6 +31,10 @@ record BoatHull(double x, double z, double halfWidth, double halfLength,
         return new Vector3d(worldX(position, x, z), position.y, worldZ(position, x, z));
     }
 
+    BoatHull centerSection() {
+        return new BoatHull(0, 0, 0.05, 0.05, bottom, top, cos, sin);
+    }
+
     double worldX(Vector3d position, double localX, double localZ) {
         return position.x + (localX * cos + localZ * sin);
     }

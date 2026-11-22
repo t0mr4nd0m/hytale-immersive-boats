@@ -325,8 +325,12 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private static boolean hullOverWater(ChunkStore chunks, Vector3d position, double yaw,
                                          ModelComponent model, BoundingBox collisionBounds) {
         var bounds = BoatHull.bounds(model, collisionBounds);
-        return bounds != null && BoatHull.forBoat(bounds, yaw).allColumns(position,
+        return bounds != null && hullOverWater(position, BoatHull.forBoat(bounds, yaw),
                 (x, z) -> !Double.isNaN(waterSurface(chunks, x + 0.5, position.y, z + 0.5)));
+    }
+
+    static boolean hullOverWater(Vector3d position, BoatHull hull, BoatHull.ColumnCheck hasWater) {
+        return hull.allColumns(position, hasWater);
     }
 
     private static boolean updateBoatModel(Ref<EntityStore> boat, ModelComponent component, boolean showOars,

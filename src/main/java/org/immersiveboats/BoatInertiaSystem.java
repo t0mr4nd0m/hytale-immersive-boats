@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
     private static final double WATER_DRAG = 0.85;
@@ -576,30 +577,41 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
     }
 
     private static boolean navigable(World world, Vector3d position, BoatHull hull) {
+        return navigable(position, hull, (x, keel, z) -> BoatWakeSystem.waterSurface(world.getChunkStore(), x, keel, z),
+                () -> {
+                    var support = new Box(-0.05, hull.bottom() - DRAFT, -0.05, 0.05, hull.bottom(), 0.05);
+                    return CollisionModule.get().validatePosition(world, support, position,
+                            CollisionConfig.MATERIAL_SOLID, null, (_, _, _, config) -> isHardBlock(config),
+                            new CollisionResult()) == CollisionModule.VALIDATE_INVALID;
+                });
+    }
+
+    static boolean navigable(Vector3d position, BoatHull hull, WaterSurface water, BooleanSupplier supportedByLand) {
         double keel = position.y + hull.bottom();
-        if (waterAtKeel(world, position.x, keel, position.z)) {
+        if (waterAtKeel(water, position.x, keel, position.z)) {
             return true;
         }
         for (int across = -1; across <= 1; across++) {
             for (int along = -1; along <= 1; along++) {
                 double x = hull.x() + across * hull.halfWidth() * 0.85;
                 double z = hull.z() + along * hull.halfLength() * 0.85;
-                if (waterAtKeel(world, hull.worldX(position, x, z), keel, hull.worldZ(position, x, z))) {
+                if (waterAtKeel(water, hull.worldX(position, x, z), keel, hull.worldZ(position, x, z))) {
                     // Water under the ends is enough unless the centre is supported by land.
-                    var support = new Box(-0.05, hull.bottom() - DRAFT, -0.05, 0.05, hull.bottom(), 0.05);
-                    int validation = CollisionModule.get().validatePosition(world, support, position,
-                            CollisionConfig.MATERIAL_SOLID, null, (_, _, _, config) -> isHardBlock(config),
-                            new CollisionResult());
-                    return validation != CollisionModule.VALIDATE_INVALID;
+                    return !supportedByLand.getAsBoolean();
                 }
             }
         }
         return false;
     }
 
-    private static boolean waterAtKeel(World world, double x, double keel, double z) {
-        double surface = BoatWakeSystem.waterSurface(world.getChunkStore(), x, keel, z);
+    private static boolean waterAtKeel(WaterSurface water, double x, double keel, double z) {
+        double surface = water.height(x, keel, z);
         return Math.abs(surface - keel) <= 2 * DRAFT;
+    }
+
+    @FunctionalInterface
+    interface WaterSurface {
+        double height(double x, double keel, double z);
     }
 
     private static boolean blockedByLand(World world, Box[] previous, Vector3d position, Box[] next,

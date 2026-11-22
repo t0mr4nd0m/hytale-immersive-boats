@@ -33,6 +33,7 @@ import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import org.joml.Vector3d;
 
+import java.util.function.BooleanSupplier;
 import javax.annotation.Nonnull;
 
 final class BoatPickupSystem extends EntityEventSystem<EntityStore, UseEntityEvent.Pre> {
@@ -130,46 +131,50 @@ final class BoatPickupSystem extends EntityEventSystem<EntityStore, UseEntityEve
         var position = transform.getPosition();
         double yaw = transform.getRotation().yaw();
         var hull = BoatHull.forBoat(bounds, yaw);
-        if (isDry(chunks, position, hull)) {
-            return false;
-        }
         // Hytale marks the mount idle when its driver dismounts, even if a tip still touches water.
-        if (states == null || !states.idle || !states.horizontalIdle) {
-            return true;
-        }
-        var center = new Box(-0.05, hull.bottom(), -0.05, 0.05, hull.top(), 0.05);
-        if (!isDry(chunks, position, BoatHull.forBoat(center, yaw))) {
-            return true;
-        }
-        var support = new Box(-0.05, hull.bottom() - BOAT_DRAFT, -0.05, 0.05, hull.bottom(), 0.05);
-        return CollisionModule.get().validatePosition(world, support, position,
-                CollisionConfig.MATERIAL_SOLID, null, (_, _, _, config) -> {
-                    var block = config.blockType;
-                    return block != null && (block.getGathering() == null || !block.getGathering().isSoft());
-                }, new CollisionResult()) != CollisionModule.VALIDATE_INVALID;
+        boolean idle = states != null && states.idle && states.horizontalIdle;
+        return isPickupBlocked(position, hull, idle, (x, z, minY, maxY, keel) -> isDry(chunks, x, z, minY, maxY, keel),
+                () -> {
+                    var support = new Box(-0.05, hull.bottom() - BOAT_DRAFT, -0.05, 0.05, hull.bottom(), 0.05);
+                    return CollisionModule.get().validatePosition(world, support, position,
+                            CollisionConfig.MATERIAL_SOLID, null, (_, _, _, config) -> {
+                                var block = config.blockType;
+                                return block != null && (block.getGathering() == null || !block.getGathering().isSoft());
+                            }, new CollisionResult()) == CollisionModule.VALIDATE_INVALID;
+                });
     }
 
-    private static boolean isDry(ChunkStore chunks, Vector3d position, BoatHull hull) {
+    static boolean isPickupBlocked(Vector3d position, BoatHull hull, boolean idle, DryColumn dry,
+                                   BooleanSupplier supportedByLand) {
         double keel = position.y + hull.bottom() - BOAT_DRAFT;
         // A full water block immediately below the keel can touch it at an integer height.
         int minY = (int) Math.ceil(keel) - 1;
         int maxY = (int) Math.ceil(position.y + hull.top());
-        return hull.allColumns(position, (x, z) -> {
-            for (int y = minY; y < maxY; y++) {
-                var sectionRef = chunks.getChunkSectionReferenceAtBlock(x, y, z);
-                if (sectionRef == null || !sectionRef.isValid()) {
+        BoatHull.ColumnCheck isDry = (x, z) -> dry.test(x, z, minY, maxY, keel);
+        return !hull.allColumns(position, isDry)
+                && (!idle || !hull.centerSection().allColumns(position, isDry) || !supportedByLand.getAsBoolean());
+    }
+
+    private static boolean isDry(ChunkStore chunks, int x, int z, int minY, int maxY, double keel) {
+        for (int y = minY; y < maxY; y++) {
+            var sectionRef = chunks.getChunkSectionReferenceAtBlock(x, y, z);
+            if (sectionRef == null || !sectionRef.isValid()) {
+                return false;
+            }
+            var section = chunks.getStore().getComponent(sectionRef, FluidSection.getComponentType());
+            var fluid = section == null ? null : section.getFluid(x, y, z);
+            if (fluid != null && "Water".equals(fluid.getFluidFXId())) {
+                int level = section.getFluidLevel(x, y, z);
+                if (level > 0 && y + Math.min(1.0, (double) level / fluid.getMaxFluidLevel()) >= keel) {
                     return false;
                 }
-                var section = chunks.getStore().getComponent(sectionRef, FluidSection.getComponentType());
-                var fluid = section == null ? null : section.getFluid(x, y, z);
-                if (fluid != null && "Water".equals(fluid.getFluidFXId())) {
-                    int level = section.getFluidLevel(x, y, z);
-                    if (level > 0 && y + Math.min(1.0, (double) level / fluid.getMaxFluidLevel()) >= keel) {
-                        return false;
-                    }
-                }
             }
-            return true;
-        });
+        }
+        return true;
+    }
+
+    @FunctionalInterface
+    interface DryColumn {
+        boolean test(int x, int z, int minY, int maxY, double keel);
     }
 }
