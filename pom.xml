@@ -14,6 +14,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>25</maven.compiler.release>
         <hytale.version>0.8.0-pre.6</hytale.version>
+        <maven.test.skip>false</maven.test.skip>
+        <skipTests>${maven.test.skip}</skipTests>
     </properties>
 
     <repositories>
@@ -85,6 +87,18 @@
                                 <argument>${project.basedir}/src/main/resources</argument>
                                 <argument>${project.build.outputDirectory}</argument>
                             </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>test-rowing</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>org.immersiveboats.BoatRowingChecks</mainClass>
+                            <classpathScope>test</classpathScope>
+                            <skip>${skipTests}</skip>
                         </configuration>
                     </execution>
                 </executions>

@@ -46,33 +46,10 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private static final String PARTICLE = "ImmersiveBoats_Boat_Wake";
     private static final String PADDLE_SOUND = "SFX_Water_MoveOut";
     private static final String PADDLE_SPLASH = "ImmersiveBoats_Boat_Paddle_Splash";
-    private static final String PADDLE_PITCH_ANIMATION = "ImmersiveBoats_Boat_Paddle_Pitch";
-    private static final String SLOW_PITCH_ANIMATION = "ImmersiveBoats_Boat_Paddle_Pitch_Slow";
-    private static final String FAST_PITCH_ANIMATION = "ImmersiveBoats_Boat_Paddle_Pitch_Fast";
-    private static final String TURN_ANIMATION = "ImmersiveBoats_Boat_Turn";
-    private static final String OARS_ROWING_ANIMATION = "ImmersiveBoats_Boat_Oars_Rowing";
-    private static final String POSITIVE_YAW_BANK = "_Bank_Positive_Yaw";
-    private static final String NEGATIVE_YAW_BANK = "_Bank_Negative_Yaw";
-    private static final String POSITIVE_YAW_TURN = "_Turn_Positive_Yaw";
-    private static final String NEGATIVE_YAW_TURN = "_Turn_Negative_Yaw";
-    private static final String REVERSE = "_Reverse";
-    private static final String STROKE = "_Stroke";
-    private static final String IDLE_ROLL_ANIMATION = "ImmersiveBoats_Boat_Idle_Roll";
-    private static final List<String> PITCH_ANIMATIONS =
-            List.of(SLOW_PITCH_ANIMATION, PADDLE_PITCH_ANIMATION, FAST_PITCH_ANIMATION);
-    private static final List<String> BOAT_ANIMATIONS = boatAnimations();
     private static final String PADDLE_PITCH_MODEL = "ImmersiveBoats_Boat_Pitch";
     private static final String ROWING_PHASE_MODEL = "ImmersiveBoats_Boat_Rowing_Phases";
-    private static final String PHASE_SUFFIX = "_Phase_";
     private static final String OARS_MODEL = "Items/Vehicles/ImmersiveBoats_Boat_Oars.blockymodel";
     private static final String OARS_TEXTURE = "Items/Vehicles/ImmersiveBoats_Boat_Oars.png";
-    private static final float ANIMATION_FRAMES_PER_SECOND = 60;
-    private static final int ROWING_CYCLE_FRAMES = 72;
-    private static final int ROWING_PHASE_STEP = 6;
-    private static final float ROWING_CYCLE_SECONDS = ROWING_CYCLE_FRAMES / ANIMATION_FRAMES_PER_SECOND;
-    private static final float FORWARD_CATCH_SECONDS = 18 / ANIMATION_FRAMES_PER_SECOND;
-    private static final float REVERSE_CATCH_SECONDS = 30 / ANIMATION_FRAMES_PER_SECOND;
-    private static final float POWER_STROKE_SECONDS = 24 / ANIMATION_FRAMES_PER_SECOND;
     private static final double MODEL_UNITS_PER_BLOCK = 32;
     private static final double OAR_SPLASH_DISTANCE_FACTOR = 0.5;
     private static final double OAR_PIVOT_X = 17;
@@ -82,12 +59,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private static final double OAR_BLADE_START = OAR_SHAFT_OFFSET + 20;
     private static final double OAR_BLADE_END = OAR_SHAFT_OFFSET + 39;
     private static final double MODEL_BASE_Z = 1.75;
-    private static final double TURN_BANK_ANGLE = Math.toRadians(3);
     private static final double OAR_CATCH_DIP = Math.toRadians(24);
-    private static final double FORWARD_CATCH_YAW = Math.toRadians(-17);
-    private static final double REVERSE_CATCH_YAW = Math.toRadians(37);
-    private static final float ROWING_STOP_GRACE_SECONDS = 0.30f;
-    private static final float TURN_STOP_GRACE_SECONDS = 0.20f;
     private static final double MIN_PADDLE_INTERVAL = 0.72;
     private static final double MAX_PADDLE_INTERVAL = 0.98;
     private static final double MIN_PADDLE_PITCH = 0.96;
@@ -172,7 +144,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
                 && hullOverWater(chunks, position, yaw, model, chunk.getComponent(index, BoundingBox.getComponentType()));
         boolean rockingWhileRowing = preferences != null && preferences.rowingPitch();
         if (idle || driverPlayer == null) {
-            state.rowingMotion.reset();
+            state.rowing.resetMotion();
         }
         if (idle || driverPlayer == null || modelChanged || (!showOars && !rockingWhileRowing)) {
             stopRowingAnimation(boat, state, commands);
@@ -189,7 +161,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         }
         if (travel > MAX_TRAVEL || Math.abs(dy) > 1.0) {
             state.paddleSpeed = 0;
-            state.rowingMotion.reset();
+            state.rowing.resetMotion();
             stopRowingAnimation(boat, state, commands);
             return;
         }
@@ -209,15 +181,15 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         boolean advancing = Math.abs(longitudinalTravel) >= minTravel;
         double sideTravel = dx * headingZ + dz * sideZ;
         boolean turning = Math.abs(turn) >= (driverPlayer == null ? MAX_IDLE_TURN_SPEED * dt : MIN_TURN);
-        boolean coasting = driverPlayer != null && state.rowingMotion.sample(travel, turn, dt);
+        boolean coasting = driverPlayer != null && state.rowing.sampleMotion(travel, turn, dt);
         boolean moving = advancing || turning || Math.abs(sideTravel) >= minSideTravel;
-        if (!moving && state.rowingAnimation == null) {
+        if (!moving && !state.rowing.active()) {
             return;
         }
 
         double surface = waterSurface(chunks, position.x, position.y, position.z);
         if (Double.isNaN(surface)) {
-            state.rowingMotion.reset();
+            state.rowing.resetMotion();
             stopRowingAnimation(boat, state, commands);
             return;
         }
@@ -226,34 +198,23 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             double bankTurn = Math.abs(turn) >= MIN_TURN && Math.abs(turn) <= Math.PI / 2 ? turn : 0;
             // The model is rendered half a turn from the entity yaw, so the bow points against heading.
             boolean reversing = longitudinalTravel > 0;
-            String previousAnimation = state.rowingAnimation;
-            float previousRemaining = state.rowingCycleRemaining;
-            var previousMode = state.rowingMode;
-            if (previousRemaining <= dt) {
-                state.strokeSplashed = false;
+            boolean canPlay = model != null && commands.getComponent(boat, NetworkId.getComponentType()) != null;
+            var update = state.rowing.advance(advancing, reversing, coasting, rockingWhileRowing, showOars, bankTurn,
+                    speedFraction, dt, animation -> canPlay && model.getModel().getAnimationSetMap().containsKey(animation));
+            if (update.stopped()) {
+                sendRowingStop(boat, commands);
+            } else if (update.playback() != null) {
+                AnimationUtils.playAnimation(boat, AnimationSlot.ServerAction, update.playback(), true, commands);
             }
-            double catchProgress = previousMode == null || !previousMode.stroke || coasting || state.strokeSplashed
-                    ? -1 : oarCatchProgress(previousRemaining, dt, previousMode.reverse);
-            if (catchProgress >= 0) {
-                state.strokeSplashed = true;
-            }
-            updateRowingAnimation(boat, state, advancing, reversing, !coasting, rockingWhileRowing, showOars, bankTurn,
-                    speedFraction, dt, commands);
-            if (model != null && previousMode != null && state.rowingMode != null
-                    && state.rowingMode.stroke && catchProgress >= 0) {
+            if (model != null && update.splash() != null) {
+                var splash = update.splash();
                 float scale = model.getModel().getScale();
-                double startYaw = previousMode.reverse ? REVERSE_CATCH_YAW : FORWARD_CATCH_YAW;
-                double endYaw = previousMode.reverse ? FORWARD_CATCH_YAW : REVERSE_CATCH_YAW;
-                double bladeYaw = Math.fma(smoothStep(catchProgress), endYaw - startYaw, startYaw);
-                double hullPitch = oarCatchHullPitch(previousAnimation, previousMode, catchProgress);
                 boolean splashed = false;
-                if (previousMode.turnDirection <= 0) {
-                    splashed = emitOarSplash(chunks, position, yaw, scale, previousMode, -1, bladeYaw, hullPitch,
-                            speedFraction, commands);
+                if (splash.usesOar(-1)) {
+                    splashed = emitOarSplash(chunks, position, yaw, scale, splash, -1, speedFraction, commands);
                 }
-                if (previousMode.turnDirection >= 0) {
-                    splashed |= emitOarSplash(chunks, position, yaw, scale, previousMode, 1, bladeYaw, hullPitch,
-                            speedFraction, commands);
+                if (splash.usesOar(1)) {
+                    splashed |= emitOarSplash(chunks, position, yaw, scale, splash, 1, speedFraction, commands);
                 }
                 if (splashed) {
                     playPaddleSound(new Vector3d(position.x, surface + 0.05, position.z), commands);
@@ -310,148 +271,16 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         }
     }
 
-    private static void updateRowingAnimation(Ref<EntityStore> boat, WakeState state, boolean advancing,
-                                              boolean reversing, boolean paddling, boolean rockingWhileRowing,
-                                              boolean showOars, double turn,
-                                              double speedFraction, float dt,
-                                              CommandBuffer<EntityStore> commands) {
-        boolean wrapped = false;
-        if (state.rowingAnimation != null) {
-            state.rowingCycleRemaining -= dt;
-            if (state.rowingCycleRemaining <= 0) {
-                state.rowingCycleRemaining = ROWING_CYCLE_SECONDS + state.rowingCycleRemaining % ROWING_CYCLE_SECONDS;
-                wrapped = true;
-            }
-        }
-        if (!paddling) {
-            state.rowingGrace = 0;
-        } else if (advancing) {
-            state.rowingGrace = ROWING_STOP_GRACE_SECONDS;
-            state.reversing = reversing;
-        } else {
-            state.rowingGrace = Math.max(0, state.rowingGrace - dt);
-        }
-        if (turn != 0) {
-            state.turnDirection = turn > 0 ? 1 : -1;
-            state.turnGrace = TURN_STOP_GRACE_SECONDS;
-        } else {
-            state.turnGrace = Math.max(0, state.turnGrace - dt);
-            if (state.turnGrace == 0) {
-                state.turnDirection = 0;
-            }
-        }
-
-        boolean rowing = state.rowingGrace > 0;
-        boolean pitch = rowing && rockingWhileRowing;
-        boolean turning = state.turnDirection != 0;
-        boolean stroke = showOars && (rowing || (paddling && turning));
-        boolean bank = rockingWhileRowing && turning;
-        if (!pitch && !stroke && !bank) {
-            stopRowingAnimation(boat, state, commands);
-            return;
-        }
-        var mode = new RowingMode(pitch, stroke, bank, stroke && rowing && state.reversing, state.turnDirection);
-        if ((mode.equals(state.rowingMode) && !wrapped)
-                || commands.getComponent(boat, NetworkId.getComponentType()) == null) {
-            return;
-        }
-        String animation = mode.animation(speedFraction);
-        if (animation.equals(state.rowingAnimation)) {
-            state.rowingMode = mode;
-            return;
-        }
-
-        var model = commands.getComponent(boat, ModelComponent.getComponentType());
-        if (model == null) {
-            return;
-        }
-        var animations = model.getModel().getAnimationSetMap();
-        boolean continueStroke = state.rowingMode != null && state.rowingMode.stroke && mode.stroke;
-        String playback = animation;
-        if (continueStroke) {
-            float elapsed = ROWING_CYCLE_SECONDS - state.rowingCycleRemaining;
-            // When reversing would jump past an unplayed catch, let that catch finish first.
-            if (!state.strokeSplashed && mode.reverse != state.rowingMode.reverse
-                    && elapsed >= catchSeconds(mode.reverse) && elapsed < catchSeconds(state.rowingMode.reverse)) {
-                return;
-            }
-            int phase = Math.round(elapsed * ANIMATION_FRAMES_PER_SECOND / ROWING_PHASE_STEP)
-                    * ROWING_PHASE_STEP % ROWING_CYCLE_FRAMES;
-            if (phase != 0) {
-                String shifted = animation + PHASE_SUFFIX + phase;
-                if (animations.containsKey(shifted)) {
-                    playback = shifted;
-                } else if (!wrapped) {
-                    return;
-                }
-            }
-        }
-        if (!animations.containsKey(playback)) {
-            return;
-        }
-        AnimationUtils.playAnimation(boat, AnimationSlot.ServerAction, playback, true, commands);
-        state.rowingAnimation = animation;
-        state.rowingMode = mode;
-        if (!continueStroke) {
-            state.rowingCycleRemaining = ROWING_CYCLE_SECONDS;
-            state.strokeSplashed = false;
+    private static void stopRowingAnimation(Ref<EntityStore> boat, WakeState state, CommandBuffer<EntityStore> commands) {
+        if (state.rowing.stop()) {
+            sendRowingStop(boat, commands);
         }
     }
 
-    private static void stopRowingAnimation(Ref<EntityStore> boat, WakeState state, CommandBuffer<EntityStore> commands) {
-        if (state.rowingAnimation != null && commands.getComponent(boat, NetworkId.getComponentType()) != null) {
+    private static void sendRowingStop(Ref<EntityStore> boat, CommandBuffer<EntityStore> commands) {
+        if (commands.getComponent(boat, NetworkId.getComponentType()) != null) {
             AnimationUtils.stopAnimation(boat, AnimationSlot.ServerAction, true, commands);
         }
-        state.rowingAnimation = null;
-        state.rowingMode = null;
-        state.turnDirection = 0;
-        state.turnGrace = 0;
-        state.reversing = false;
-        state.rowingCycleRemaining = 0;
-        state.rowingGrace = 0;
-        state.strokeSplashed = false;
-    }
-
-    private record RowingMode(boolean pitch, boolean stroke, boolean bank, boolean reverse, int turnDirection) {
-        String animation(double speedFraction) {
-            String direction = reverse ? REVERSE : "";
-            if (bank) {
-                String suffix = turnDirection > 0 ? POSITIVE_YAW_BANK : NEGATIVE_YAW_BANK;
-                if (pitch) {
-                    return pitchAnimation(speedFraction) + suffix + direction;
-                }
-                return TURN_ANIMATION + suffix + (stroke ? STROKE : "");
-            }
-            String suffix = switch (turnDirection) {
-                case 1 -> POSITIVE_YAW_TURN;
-                case -1 -> NEGATIVE_YAW_TURN;
-                default -> "";
-            };
-            return (pitch ? pitchAnimation(speedFraction) : OARS_ROWING_ANIMATION) + suffix + direction;
-        }
-
-        private static String pitchAnimation(double speedFraction) {
-            return PITCH_ANIMATIONS.get(Math.min(2, (int) (speedFraction * 3)));
-        }
-    }
-
-    private static List<String> boatAnimations() {
-        var animations = new ArrayList<>(List.of(IDLE_ROLL_ANIMATION));
-        for (String base : PITCH_ANIMATIONS) {
-            for (String bank : List.of("", POSITIVE_YAW_BANK, NEGATIVE_YAW_BANK)) {
-                animations.add(base + bank);
-                animations.add(base + bank + REVERSE);
-            }
-        }
-        for (String turn : List.of("", POSITIVE_YAW_TURN, NEGATIVE_YAW_TURN)) {
-            animations.add(OARS_ROWING_ANIMATION + turn);
-            animations.add(OARS_ROWING_ANIMATION + turn + REVERSE);
-        }
-        for (String bank : List.of(POSITIVE_YAW_BANK, NEGATIVE_YAW_BANK)) {
-            animations.add(TURN_ANIMATION + bank);
-            animations.add(TURN_ANIMATION + bank + STROKE);
-        }
-        return List.copyOf(animations);
     }
 
     private void updateIdleRoll(Ref<EntityStore> boat, WakeState state, boolean idle, boolean unoccupied,
@@ -469,7 +298,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         state.idleRollViewers.retainAll(visibility.visibleTo.keySet());
         if (idle) {
             var model = commands.getComponent(boat, ModelComponent.getComponentType());
-            if (model == null || !model.getModel().getAnimationSetMap().containsKey(IDLE_ROLL_ANIMATION)) {
+            if (model == null || !model.getModel().getAnimationSetMap().containsKey(BoatRowing.IDLE_ROLL_ANIMATION)) {
                 idle = false;
             }
         }
@@ -482,7 +311,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             if (shouldRoll == state.idleRollViewers.contains(viewer)) {
                 continue;
             }
-            String animation = shouldRoll ? IDLE_ROLL_ANIMATION : null;
+            String animation = shouldRoll ? BoatRowing.IDLE_ROLL_ANIMATION : null;
             player.getPacketHandler().writeNoCache(
                     new PlayAnimation(networkId.getId(), null, animation, AnimationSlot.ServerAction));
             if (shouldRoll) {
@@ -510,7 +339,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             return false;
         }
         boolean hasOars = OARS_MODEL.equals(original.getModel());
-        boolean hasAnimations = original.getAnimationSetMap().keySet().containsAll(BOAT_ANIMATIONS);
+        boolean hasAnimations = original.getAnimationSetMap().keySet().containsAll(BoatRowing.ANIMATIONS);
         if (hasOars == showOars && hasAnimations) {
             return false;
         }
@@ -525,7 +354,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
                 return false;
             }
             animations = new HashMap<>(animations);
-            for (String animation : BOAT_ANIMATIONS) {
+            for (String animation : BoatRowing.ANIMATIONS) {
                 var animationSet = source.getAnimationSetMap().get(animation);
                 if (animationSet == null) {
                     return false;
@@ -535,7 +364,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             var phaseModel = ModelAsset.getAssetMap().getAsset(ROWING_PHASE_MODEL);
             if (phaseModel != null) {
                 for (var phase : phaseModel.getAnimationSetMap().entrySet()) {
-                    if (phase.getKey().contains(PHASE_SUFFIX)) {
+                    if (phase.getKey().contains(BoatRowing.PHASE_SUFFIX)) {
                         animations.put(phase.getKey(), phase.getValue());
                     }
                 }
@@ -572,53 +401,17 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         return true;
     }
 
-    private static double oarCatchProgress(float remaining, float dt, boolean reverse) {
-        if (remaining <= 0) {
-            return -1;
-        }
-        float catchRemaining = ROWING_CYCLE_SECONDS - catchSeconds(reverse);
-        float untilCatch = remaining - catchRemaining;
-        if (untilCatch <= 0) {
-            untilCatch += ROWING_CYCLE_SECONDS;
-        }
-        if (dt < untilCatch) {
-            return -1;
-        }
-        // The wake tick can arrive just after the catch, already partway through the power stroke.
-        return Math.clamp((dt - untilCatch) / POWER_STROKE_SECONDS, 0f, 1f);
-    }
-
-    private static float catchSeconds(boolean reverse) {
-        return reverse ? REVERSE_CATCH_SECONDS : FORWARD_CATCH_SECONDS;
-    }
-
-    private static double oarCatchHullPitch(String animation, RowingMode mode, double strokeProgress) {
-        if (!mode.pitch) {
-            return 0;
-        }
-        double peak = animation.startsWith(SLOW_PITCH_ANIMATION) ? 0.65
-                : animation.startsWith(FAST_PITCH_ANIMATION) ? 1.65 : 1.2;
-        // The hull lifts on frame 18 and levels on frame 54, including in reverse clips.
-        double catchFrame = mode.reverse ? 30 : 18;
-        double progress = smoothStep((catchFrame + 24 * strokeProgress - 18) / 36);
-        return -Math.toRadians(peak) * (1 - progress);
-    }
-
-    private static double smoothStep(double progress) {
-        double clamped = Math.clamp(progress, 0.0, 1.0);
-        return clamped * clamped * (3 - 2 * clamped);
-    }
-
     private boolean emitOarSplash(ChunkStore chunks, Vector3d position, double yaw, float modelScale,
-                                  RowingMode mode, int side, double bladeYaw, double hullPitch,
+                                  BoatRowing.Splash stroke, int side,
                                   double speedFraction, CommandBuffer<EntityStore> commands) {
         // Follow the shaft offset, oar pivot, and hull bank through the model hierarchy.
-        double bank = mode.bank ? -mode.turnDirection * TURN_BANK_ANGLE : 0;
+        double bank = stroke.hullBank();
+        double hullPitch = stroke.hullPitch();
         var bladeAxis = new Vector3d(side, 0, 0)
                 .rotateZ(-side * OAR_CATCH_DIP)
-                .rotateY(side * bladeYaw);
+                .rotateY(side * stroke.bladeYaw());
         // The tangent of the blade's sweep gives the direction in which it pushes water.
-        int sweep = mode.reverse ? -side : side;
+        int sweep = stroke.reverse() ? -side : side;
         var sweepDirection = new Vector3d(sweep * bladeAxis.z, 0, -sweep * bladeAxis.x)
                 .rotateX(hullPitch)
                 .rotateZ(bank)
@@ -751,80 +544,13 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         return driver != null && driver.isValid() ? driver : null;
     }
 
-    private static final class RowingMotion {
-        private static final double SAMPLE_SECONDS = 0.15;
-        private static final double MIN_COAST_DECELERATION = 1.5;
-        private static final double MAX_COAST_DECELERATION = 6.0;
-        private static final double MAX_SAMPLE_TURN = Math.toRadians(3);
-        private static final double MIN_SAMPLE_SPEED = 0.2;
-        private static final int COAST_SAMPLES = 2;
-
-        private double elapsed;
-        private double distance;
-        private double turn;
-        private double previousSpeed;
-        private double previousDuration;
-        private int slowingSamples;
-        private boolean coasting;
-
-        boolean sample(double travel, double yawChange, double dt) {
-            elapsed += dt;
-            distance += travel;
-            turn += Math.abs(yawChange);
-            if (elapsed < SAMPLE_SECONDS) {
-                return coasting;
-            }
-
-            double speed = distance / elapsed;
-            double acceleration = (speed - previousSpeed) / ((elapsed + previousDuration) * 0.5);
-            if (speed <= MIN_SAMPLE_SPEED || acceleration >= MIN_COAST_DECELERATION) {
-                coasting = false;
-            }
-
-            // Coasting produces repeated moderate speed drops. Reject turns and isolated, abrupt drops.
-            if (previousDuration > 0 && speed > MIN_SAMPLE_SPEED && turn < MAX_SAMPLE_TURN
-                    && acceleration <= -MIN_COAST_DECELERATION && acceleration >= -MAX_COAST_DECELERATION) {
-                if (++slowingSamples >= COAST_SAMPLES) {
-                    coasting = true;
-                }
-            } else {
-                slowingSamples = 0;
-            }
-
-            previousSpeed = speed;
-            previousDuration = elapsed;
-            elapsed = 0;
-            distance = 0;
-            turn = 0;
-            return coasting;
-        }
-
-        void reset() {
-            elapsed = 0;
-            distance = 0;
-            turn = 0;
-            previousSpeed = 0;
-            previousDuration = 0;
-            slowingSamples = 0;
-            coasting = false;
-        }
-    }
-
     static final class WakeState implements Component<EntityStore> {
         private final Vector3d previous = new Vector3d();
         private double previousYaw;
         private float paddleCooldown;
         private double paddleSpeed;
         private int paddleSide = 1;
-        private String rowingAnimation;
-        private float rowingCycleRemaining;
-        private float rowingGrace;
-        private boolean strokeSplashed;
-        private final RowingMotion rowingMotion = new RowingMotion();
-        private RowingMode rowingMode;
-        private int turnDirection;
-        private float turnGrace;
-        private boolean reversing;
+        private BoatRowing rowing = new BoatRowing();
         private float idleTime;
         private final Set<Ref<EntityStore>> idleRollViewers = new HashSet<>();
 
@@ -838,14 +564,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             copy.paddleCooldown = paddleCooldown;
             copy.paddleSpeed = paddleSpeed;
             copy.paddleSide = paddleSide;
-            copy.rowingAnimation = rowingAnimation;
-            copy.rowingCycleRemaining = rowingCycleRemaining;
-            copy.rowingGrace = rowingGrace;
-            copy.strokeSplashed = strokeSplashed;
-            copy.rowingMode = rowingMode;
-            copy.turnDirection = turnDirection;
-            copy.turnGrace = turnGrace;
-            copy.reversing = reversing;
+            copy.rowing = rowing.copy();
             copy.idleTime = idleTime;
             copy.idleRollViewers.addAll(idleRollViewers);
             return copy;
