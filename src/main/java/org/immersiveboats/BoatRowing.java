@@ -1,33 +1,14 @@
 package org.immersiveboats;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Predicate;
 
+import static org.immersiveboats.BoatAnimation.*;
+
 final class BoatRowing {
-    private static final String PADDLE_PITCH_ANIMATION = "ImmersiveBoats_Boat_Paddle_Pitch";
-    private static final String SLOW_PITCH_ANIMATION = "ImmersiveBoats_Boat_Paddle_Pitch_Slow";
-    private static final String FAST_PITCH_ANIMATION = "ImmersiveBoats_Boat_Paddle_Pitch_Fast";
-    private static final String TURN_ANIMATION = "ImmersiveBoats_Boat_Turn";
-    private static final String OARS_ROWING_ANIMATION = "ImmersiveBoats_Boat_Oars_Rowing";
-    private static final String POSITIVE_YAW_BANK = "_Bank_Positive_Yaw";
-    private static final String NEGATIVE_YAW_BANK = "_Bank_Negative_Yaw";
-    private static final String POSITIVE_YAW_TURN = "_Turn_Positive_Yaw";
-    private static final String NEGATIVE_YAW_TURN = "_Turn_Negative_Yaw";
-    private static final String REVERSE = "_Reverse";
-    private static final String STROKE = "_Stroke";
-    static final String IDLE_ROLL_ANIMATION = "ImmersiveBoats_Boat_Idle_Roll";
-    private static final List<String> PITCH_ANIMATIONS =
-            List.of(SLOW_PITCH_ANIMATION, PADDLE_PITCH_ANIMATION, FAST_PITCH_ANIMATION);
-    static final List<String> ANIMATIONS = boatAnimations();
-    static final String PHASE_SUFFIX = "_Phase_";
-    private static final float ANIMATION_FRAMES_PER_SECOND = 60;
-    private static final int ROWING_CYCLE_FRAMES = 72;
-    private static final int ROWING_PHASE_STEP = 6;
-    private static final float ROWING_CYCLE_SECONDS = ROWING_CYCLE_FRAMES / ANIMATION_FRAMES_PER_SECOND;
-    private static final float FORWARD_CATCH_SECONDS = 18 / ANIMATION_FRAMES_PER_SECOND;
-    private static final float REVERSE_CATCH_SECONDS = 30 / ANIMATION_FRAMES_PER_SECOND;
-    private static final float POWER_STROKE_SECONDS = 24 / ANIMATION_FRAMES_PER_SECOND;
+    private static final float ROWING_CYCLE_SECONDS = (float) ROWING_CYCLE_FRAMES / FRAMES_PER_SECOND;
+    private static final float FORWARD_CATCH_SECONDS = (float) FORWARD_CATCH_FRAME / FRAMES_PER_SECOND;
+    private static final float REVERSE_CATCH_SECONDS = (float) REVERSE_CATCH_FRAME / FRAMES_PER_SECOND;
+    private static final float POWER_STROKE_SECONDS = (float) POWER_STROKE_FRAMES / FRAMES_PER_SECOND;
     private static final float ROWING_STOP_GRACE_SECONDS = 0.30f;
     private static final float TURN_STOP_GRACE_SECONDS = 0.20f;
     private static final double FORWARD_CATCH_YAW = Math.toRadians(-17);
@@ -165,7 +146,7 @@ final class BoatRowing {
                     && elapsed >= catchSeconds(mode.reverse) && elapsed < catchSeconds(rowingMode.reverse)) {
                 return null;
             }
-            int phase = Math.round(elapsed * ANIMATION_FRAMES_PER_SECOND / ROWING_PHASE_STEP)
+            int phase = Math.round(elapsed * FRAMES_PER_SECOND / ROWING_PHASE_STEP)
                     * ROWING_PHASE_STEP % ROWING_CYCLE_FRAMES;
             if (phase != 0) {
                 String shifted = animation + PHASE_SUFFIX + phase;
@@ -224,25 +205,6 @@ final class BoatRowing {
         }
     }
 
-    private static List<String> boatAnimations() {
-        var animations = new ArrayList<>(List.of(IDLE_ROLL_ANIMATION));
-        for (String base : PITCH_ANIMATIONS) {
-            for (String bank : List.of("", POSITIVE_YAW_BANK, NEGATIVE_YAW_BANK)) {
-                animations.add(base + bank);
-                animations.add(base + bank + REVERSE);
-            }
-        }
-        for (String turn : List.of("", POSITIVE_YAW_TURN, NEGATIVE_YAW_TURN)) {
-            animations.add(OARS_ROWING_ANIMATION + turn);
-            animations.add(OARS_ROWING_ANIMATION + turn + REVERSE);
-        }
-        for (String bank : List.of(POSITIVE_YAW_BANK, NEGATIVE_YAW_BANK)) {
-            animations.add(TURN_ANIMATION + bank);
-            animations.add(TURN_ANIMATION + bank + STROKE);
-        }
-        return List.copyOf(animations);
-    }
-
     private static double oarCatchProgress(float remaining, float dt, boolean reverse) {
         if (remaining <= 0) {
             return -1;
@@ -270,8 +232,8 @@ final class BoatRowing {
         double peak = animation.startsWith(SLOW_PITCH_ANIMATION) ? 0.65
                 : animation.startsWith(FAST_PITCH_ANIMATION) ? 1.65 : 1.2;
         // The hull lifts on frame 18 and levels on frame 54, including in reverse clips.
-        double catchFrame = mode.reverse ? 30 : 18;
-        double progress = smoothStep((catchFrame + 24 * strokeProgress - 18) / 36);
+        int catchFrame = mode.reverse ? REVERSE_CATCH_FRAME : FORWARD_CATCH_FRAME;
+        double progress = smoothStep((catchFrame + POWER_STROKE_FRAMES * strokeProgress - 18) / 36);
         return -Math.toRadians(peak) * (1 - progress);
     }
 

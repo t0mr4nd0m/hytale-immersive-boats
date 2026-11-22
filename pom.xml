@@ -72,8 +72,8 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>generate-rowing-phases</id>
-                        <phase>generate-resources</phase>
+                        <id>validate-and-generate-rowing-animations</id>
+                        <phase>compile</phase>
                         <goals>
                             <goal>exec</goal>
                         </goals>

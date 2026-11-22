@@ -298,7 +298,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         state.idleRollViewers.retainAll(visibility.visibleTo.keySet());
         if (idle) {
             var model = commands.getComponent(boat, ModelComponent.getComponentType());
-            if (model == null || !model.getModel().getAnimationSetMap().containsKey(BoatRowing.IDLE_ROLL_ANIMATION)) {
+            if (model == null || !model.getModel().getAnimationSetMap().containsKey(BoatAnimation.IDLE_ROLL_ANIMATION)) {
                 idle = false;
             }
         }
@@ -311,7 +311,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             if (shouldRoll == state.idleRollViewers.contains(viewer)) {
                 continue;
             }
-            String animation = shouldRoll ? BoatRowing.IDLE_ROLL_ANIMATION : null;
+            String animation = shouldRoll ? BoatAnimation.IDLE_ROLL_ANIMATION : null;
             player.getPacketHandler().writeNoCache(
                     new PlayAnimation(networkId.getId(), null, animation, AnimationSlot.ServerAction));
             if (shouldRoll) {
@@ -339,7 +339,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             return false;
         }
         boolean hasOars = OARS_MODEL.equals(original.getModel());
-        boolean hasAnimations = original.getAnimationSetMap().keySet().containsAll(BoatRowing.ANIMATIONS);
+        boolean hasAnimations = original.getAnimationSetMap().keySet().containsAll(BoatAnimation.CLIPS.keySet());
         if (hasOars == showOars && hasAnimations) {
             return false;
         }
@@ -354,7 +354,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
                 return false;
             }
             animations = new HashMap<>(animations);
-            for (String animation : BoatRowing.ANIMATIONS) {
+            for (String animation : BoatAnimation.CLIPS.keySet()) {
                 var animationSet = source.getAnimationSetMap().get(animation);
                 if (animationSet == null) {
                     return false;
@@ -364,7 +364,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             var phaseModel = ModelAsset.getAssetMap().getAsset(ROWING_PHASE_MODEL);
             if (phaseModel != null) {
                 for (var phase : phaseModel.getAnimationSetMap().entrySet()) {
-                    if (phase.getKey().contains(BoatRowing.PHASE_SUFFIX)) {
+                    if (phase.getKey().contains(BoatAnimation.PHASE_SUFFIX)) {
                         animations.put(phase.getKey(), phase.getValue());
                     }
                 }

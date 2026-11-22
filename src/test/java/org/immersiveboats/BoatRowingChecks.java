@@ -58,7 +58,7 @@ public final class BoatRowingChecks {
 
     private static void missingPhaseDefersSwitchToCycleBoundary() {
         var rowing = new BoatRowing();
-        Predicate<String> baseAnimations = name -> !name.contains(BoatRowing.PHASE_SUFFIX);
+        Predicate<String> baseAnimations = name -> !name.contains(BoatAnimation.PHASE_SUFFIX);
         step(rowing, false, 0, 0.1f);
         var pending = rowing.advance(true, false, false, false, true, 1, 0.5, 0.2f, baseAnimations);
         check(pending.playback() == null, "Missing phase clip must not restart the stroke");
