@@ -146,16 +146,15 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         }
         updateIdleRoll(boat, state, idle, driverPlayer == null, commands);
 
-        if (driverPlayer == null) {
-            state.paddleSpeed = 0;
-            state.paddleCooldown = 0;
-            state.paddleSide = 1;
-            return;
-        }
         if (idle) {
+            if (driverPlayer == null) {
+                state.paddleSpeed = 0;
+                state.paddleCooldown = 0;
+                state.paddleSide = 1;
+            }
             return;
         }
-        boolean rowingPitch = motion.rowingPitch().get(driverPlayer.getUuid());
+        boolean rowingPitch = driverPlayer != null && motion.rowingPitch().get(driverPlayer.getUuid());
         if (!rowingPitch && state.pitchAnimation != null) {
             stopPitch(boat, state, commands);
         }
@@ -175,10 +174,12 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
 
         double sideZ = -headingX;
         double longitudinalTravel = dx * headingX + dz * headingZ;
-        boolean advancing = Math.abs(longitudinalTravel) >= MIN_TRAVEL;
+        double minTravel = driverPlayer == null ? MAX_IDLE_SPEED * dt : MIN_TRAVEL;
+        double minSideTravel = driverPlayer == null ? minTravel : MIN_SIDE_TRAVEL;
+        boolean advancing = Math.abs(longitudinalTravel) >= minTravel;
         double sideTravel = dx * headingZ + dz * sideZ;
-        boolean turning = Math.abs(turn) >= MIN_TURN;
-        if (!advancing && !turning && Math.abs(sideTravel) < MIN_SIDE_TRAVEL) {
+        boolean turning = Math.abs(turn) >= (driverPlayer == null ? MAX_IDLE_TURN_SPEED * dt : MIN_TURN);
+        if (!advancing && !turning && Math.abs(sideTravel) < minSideTravel) {
             if (rowingPitch) {
                 updatePitch(boat, state, false, speedFraction, dt, commands);
             }
@@ -194,16 +195,32 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         if (rowingPitch) {
             updatePitch(boat, state, advancing, speedFraction, dt, commands);
         }
-        if ((advancing || turning) && state.paddleCooldown <= 0) {
+        if ((advancing || turning || driverPlayer == null) && state.paddleCooldown <= 0) {
             var random = ThreadLocalRandom.current();
-            int sound = SoundEvent.getAssetMap().getIndex(PADDLE_SOUND);
-            if (sound > 0) {
-                var paddlePosition = new Vector3d(position.x + headingZ * state.paddleSide * SIDE_OFFSET,
-                        surface + 0.05, position.z + sideZ * state.paddleSide * SIDE_OFFSET);
-                playPaddleSound(sound, paddlePosition,
-                        (float) random.nextDouble(MIN_PADDLE_PITCH, MAX_PADDLE_PITCH), commands);
+            double along = 0;
+            double across = state.paddleSide * SIDE_OFFSET;
+            if (driverPlayer == null) {
+                if (advancing && Math.abs(longitudinalTravel) >= Math.abs(sideTravel)) {
+                    along = Math.copySign(HULL_END_FOAM_OFFSET, longitudinalTravel);
+                    across = 0;
+                } else if (Math.abs(sideTravel) >= minSideTravel) {
+                    across = Math.copySign(SIDE_OFFSET, sideTravel);
+                } else {
+                    along = Math.copySign(TURN_OFFSET, turn) * state.paddleSide;
+                }
+            }
+            double splashX = position.x + headingX * along + headingZ * across;
+            double splashZ = position.z + headingZ * along + sideZ * across;
+            double splashSurface = driverPlayer == null ? waterSurface(chunks, splashX, position.y, splashZ) : surface;
+            if (!Double.isNaN(splashSurface)) {
+                var splashPosition = new Vector3d(splashX, splashSurface + 0.05, splashZ);
+                int sound = SoundEvent.getAssetMap().getIndex(PADDLE_SOUND);
+                if (sound > 0) {
+                    playPaddleSound(sound, splashPosition,
+                            (float) random.nextDouble(MIN_PADDLE_PITCH, MAX_PADDLE_PITCH), commands);
+                }
                 float splashScale = (float) (SLOW_SPLASH_SCALE + speedFraction * (FAST_SPLASH_SCALE - SLOW_SPLASH_SCALE));
-                spawnFoam(PADDLE_SPLASH, paddlePosition, splashScale, commands);
+                spawnFoam(PADDLE_SPLASH, splashPosition, splashScale, commands);
             }
             state.paddleSide = -state.paddleSide;
             state.paddleCooldown = (float) random.nextDouble(MIN_PADDLE_INTERVAL, MAX_PADDLE_INTERVAL)
@@ -222,11 +239,11 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
 
         // As the hull pivots, opposite ends sweep water on opposite sides.
         double turnOffset = turning ? Math.copySign(TURN_OFFSET, turn) : 0;
-        if (turning || sideTravel >= MIN_SIDE_TRAVEL) {
+        if (turning || sideTravel >= minSideTravel) {
             emitFoam(chunks, commands, position.x + headingZ * SIDE_OFFSET + headingX * turnOffset,
                     position.y, position.z + sideZ * SIDE_OFFSET + headingZ * turnOffset);
         }
-        if (turning || sideTravel <= -MIN_SIDE_TRAVEL) {
+        if (turning || sideTravel <= -minSideTravel) {
             emitFoam(chunks, commands, position.x - headingZ * SIDE_OFFSET - headingX * turnOffset,
                     position.y, position.z - sideZ * SIDE_OFFSET - headingZ * turnOffset);
         }
@@ -430,7 +447,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         }
     }
 
-    private static double waterSurface(ChunkStore chunks, double x, double hullY, double z) {
+    static double waterSurface(ChunkStore chunks, double x, double hullY, double z) {
         int blockX = (int) Math.floor(x);
         int blockZ = (int) Math.floor(z);
         int hullBlockY = (int) Math.floor(hullY);

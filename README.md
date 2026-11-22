@@ -1,23 +1,28 @@
 # Immersive Boats
 
-Immersive Boats adds rowing effects and makes it easier to pick up Hytale’s boats.
+Immersive Boats makes Hytale's boats feel more realistic with foam wakes, water sounds, and improved physics.
 
 ## Effects on the water
 
-- Foam wakes as you maneuver.
-- Soft splashes as you row.
+- Foam wakes and soft splashes as boats move, even without a pilot.
 - Gentle pitching while rowing and side-to-side rocking at rest.
 
 ## Boat interactions
 
-Press **F** (the default interaction key) to interact with a boat.
+- If the boat is navigable, you can board it as usual.
+- If the boat is ashore or stranded at the shoreline, your interaction preference determines whether you board it, pick it up, or drop it as an item.
 
-- If the boat can still sail, you board it as usual.
-- If the boat is fully ashore or stranded at the shoreline, your personal interaction setting applies.
+## Enhanced physics
+
+- Boats retain momentum on the water and slow down gradually when the pilot stops rowing or dismounts.
+- Moving boats, players, and other entities with collision can push boats without a pilot and piloted boats that are stationary.
+- Boats that are still navigable can be pushed away from or along the shore.
 
 ## Configuration
 
-Run `/boat_settings` in game to open the settings menu. Adjust your rowing volume, foam opacity, boat interaction ashore, or the two boat motion toggles. **Apply** saves your changes and closes the menu. **Cancel** closes the menu and discards pending edits.
+Run `/boat_settings` in game to adjust rowing volume, foam opacity, how you interact with boats ashore, and whether boats rock at rest or pitch while rowing. **Apply** saves your changes and closes the menu. **Cancel** closes the menu and discards pending edits.
+
+Enhanced physics is enabled by default. Server operators and players with the `immersiveboats.settings.physics` permission can toggle it for everyone from the same menu.
 
 ## Build
 

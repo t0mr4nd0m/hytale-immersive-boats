@@ -16,14 +16,17 @@ final class BoatSettingsCommand extends AbstractPlayerCommand {
     private final PlayerPercentages opacities;
     private final PlayerPreferences<LandInteraction> interactions;
     private final BoatMotionPreferences motion;
+    private final BoatPhysicsSettings physics;
 
     BoatSettingsCommand(PlayerPercentages volumes, PlayerPercentages opacities,
-                        PlayerPreferences<LandInteraction> interactions, BoatMotionPreferences motion) {
+                        PlayerPreferences<LandInteraction> interactions, BoatMotionPreferences motion,
+                        BoatPhysicsSettings physics) {
         super("boat_settings", "immersive_boats.settings.description");
         this.volumes = volumes;
         this.opacities = opacities;
         this.interactions = interactions;
         this.motion = motion;
+        this.physics = physics;
         requireNoPermission();
     }
 
@@ -33,7 +36,7 @@ final class BoatSettingsCommand extends AbstractPlayerCommand {
         var player = store.getComponent(ref, Player.getComponentType());
         if (player != null) {
             player.getPageManager().openCustomPage(ref, store,
-                    new BoatSettingsPage(playerRef, volumes, opacities, interactions, motion));
+                    new BoatSettingsPage(playerRef, volumes, opacities, interactions, motion, physics));
         }
     }
 }

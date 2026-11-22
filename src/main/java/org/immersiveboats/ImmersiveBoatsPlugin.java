@@ -20,9 +20,17 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
         var opacities = loadPercentagePreference("foam-opacities.properties");
         var motion = new BoatMotionPreferences(loadMotionPreference("idle-roll.properties"),
                 loadMotionPreference("rowing-pitch.properties"));
+        var physics = new BoatPhysicsSettings(getDataDirectory().resolve("boat-physics.properties"));
+        try {
+            physics.load();
+        } catch (IOException | IllegalArgumentException e) {
+            getLogger().at(Level.WARNING).withCause(e).log("Could not load server boat physics settings");
+        }
         var registry = getEntityStoreRegistry();
         var wakeState = registry.registerComponent(BoatWakeSystem.WakeState.class, BoatWakeSystem.WakeState::new);
+        var inertia = registry.registerComponent(BoatInertiaSystem.Inertia.class, BoatInertiaSystem.Inertia::new);
         registry.registerSystem(new BoatWakeSystem(wakeState, volumes, opacities, motion));
+        registry.registerSystem(new BoatInertiaSystem(inertia, physics));
         var interactionFile = getDataDirectory().resolve("land-interactions.properties");
         var interactions = new PlayerPreferences<>(interactionFile, LandInteraction.PICK_UP,
                 LandInteraction::parseSaved, LandInteraction::argument);
@@ -31,7 +39,7 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
         } catch (IOException | IllegalArgumentException e) {
             getLogger().at(Level.WARNING).withCause(e).log("Could not load player boat interactions");
         }
-        getCommandRegistry().registerCommand(new BoatSettingsCommand(volumes, opacities, interactions, motion));
+        getCommandRegistry().registerCommand(new BoatSettingsCommand(volumes, opacities, interactions, motion, physics));
         registry.registerSystem(new BoatPickupSystem(interactions));
     }
 

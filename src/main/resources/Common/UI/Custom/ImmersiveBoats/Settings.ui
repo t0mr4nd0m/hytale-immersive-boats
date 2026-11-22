@@ -24,7 +24,7 @@ $C = "../Common.ui";
 
 $C.@PageOverlay {
   $C.@DecoratedContainer {
-    Anchor: (Width: 620, Height: 444);
+    Anchor: (Width: 620, Height: 506);
 
     #Title {
       $C.@Title #Heading {
@@ -59,6 +59,15 @@ $C.@PageOverlay {
       @SettingRow {
         @SettingLabel #RowingPitchLabel {}
         $C.@CheckBox #RowingPitch { Anchor: (Width: 22, Height: 22, Right: 12); }
+      }
+
+      @SettingRow {
+        @SettingLabel #PhysicsLabel {}
+        Label #PhysicsStatus {
+          Anchor: (Width: 115, Right: 12);
+          Style: (...$C.@DefaultLabelStyle, FontSize: 16, HorizontalAlignment: End, VerticalAlignment: Center);
+        }
+        $C.@CheckBox #EnhancedPhysics { Anchor: (Width: 22, Height: 22, Right: 12); }
       }
 
       Group {

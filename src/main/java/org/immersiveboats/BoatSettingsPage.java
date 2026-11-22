@@ -9,6 +9,7 @@ import com.hypixel.hytale.protocol.packets.interface_.CustomPageLifetime;
 import com.hypixel.hytale.protocol.packets.interface_.CustomUIEventBindingType;
 import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.entity.entities.player.pages.InteractiveCustomUIPage;
+import com.hypixel.hytale.server.core.permissions.PermissionsModule;
 import com.hypixel.hytale.server.core.ui.DropdownEntryInfo;
 import com.hypixel.hytale.server.core.ui.LocalizableString;
 import com.hypixel.hytale.server.core.ui.builder.EventData;
@@ -29,14 +30,19 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
     private final PlayerPercentages opacities;
     private final PlayerPreferences<LandInteraction> interactions;
     private final BoatMotionPreferences motion;
+    private final BoatPhysicsSettings physics;
+    private boolean editingPhysics;
+    private boolean initialPhysics;
 
     BoatSettingsPage(PlayerRef player, PlayerPercentages volumes, PlayerPercentages opacities,
-                     PlayerPreferences<LandInteraction> interactions, BoatMotionPreferences motion) {
+                     PlayerPreferences<LandInteraction> interactions, BoatMotionPreferences motion,
+                     BoatPhysicsSettings physics) {
         super(player, CustomPageLifetime.CanDismiss, Input.CODEC);
         this.volumes = volumes;
         this.opacities = opacities;
         this.interactions = interactions;
         this.motion = motion;
+        this.physics = physics;
     }
 
     @Override
@@ -50,6 +56,14 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
         commands.set("#InteractionLabel.Text", Message.translation(TRANSLATIONS + "interaction"));
         commands.set("#IdleRollLabel.Text", Message.translation(TRANSLATIONS + "idleRoll"));
         commands.set("#RowingPitchLabel.Text", Message.translation(TRANSLATIONS + "rowingPitch"));
+        initialPhysics = physics.state().enabled();
+        editingPhysics = canEditPhysics(player);
+        commands.set("#PhysicsLabel.Text", Message.translation(TRANSLATIONS + "physics"));
+        commands.set("#EnhancedPhysics.Value", initialPhysics);
+        commands.set("#EnhancedPhysics.Visible", editingPhysics);
+        commands.set("#PhysicsStatus.Visible", !editingPhysics);
+        commands.set("#PhysicsStatus.Text",
+                Message.translation(TRANSLATIONS + (initialPhysics ? "enabled" : "disabled")));
         commands.set("#Apply.Text", Message.translation(TRANSLATIONS + "apply"));
         commands.set("#Cancel.Text", Message.translation(TRANSLATIONS + "cancel"));
         commands.set("#Volume.Value", volumes.get(player));
@@ -62,13 +76,16 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
                 .toList());
         commands.set("#Mode.Value", interactions.get(player).argument());
 
-        events.addEventBinding(CustomUIEventBindingType.Activating, "#Apply",
-                EventData.of("Action", "apply")
-                        .append("@Volume", "#Volume.Value")
-                        .append("@Opacity", "#Opacity.Value")
-                        .append("@Mode", "#Mode.Value")
-                        .append("@IdleRoll", "#IdleRoll.Value")
-                        .append("@RowingPitch", "#RowingPitch.Value"));
+        var apply = EventData.of("Action", "apply")
+                .append("@Volume", "#Volume.Value")
+                .append("@Opacity", "#Opacity.Value")
+                .append("@Mode", "#Mode.Value")
+                .append("@IdleRoll", "#IdleRoll.Value")
+                .append("@RowingPitch", "#RowingPitch.Value");
+        if (editingPhysics) {
+            apply.append("@EnhancedPhysics", "#EnhancedPhysics.Value");
+        }
+        events.addEventBinding(CustomUIEventBindingType.Activating, "#Apply", apply);
         events.addEventBinding(CustomUIEventBindingType.Activating, "#Cancel", EventData.of("Action", "cancel"));
     }
 
@@ -96,17 +113,24 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
         if (mode == null) {
             return "invalidMode";
         }
-        if (input.idleRoll == null || input.rowingPitch == null) {
+        if (input.idleRoll == null || input.rowingPitch == null || (editingPhysics && input.enhancedPhysics == null)) {
             return "invalidAction";
         }
 
         UUID player = playerRef.getUuid();
+        boolean changePhysics = editingPhysics && input.enhancedPhysics != initialPhysics;
+        if (changePhysics && !canEditPhysics(player)) {
+            return "physicsPermission";
+        }
         try {
             volumes.set(player, input.volume);
             opacities.set(player, input.opacity);
             interactions.set(player, mode);
             motion.idleRoll().set(player, input.idleRoll);
             motion.rowingPitch().set(player, input.rowingPitch);
+            if (changePhysics) {
+                physics.setEnabled(input.enhancedPhysics);
+            }
         } catch (IOException e) {
             return "saveFailed";
         }
@@ -115,6 +139,10 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
 
     private static boolean isInvalidPercentage(Integer value) {
         return value == null || value < 0 || value > PlayerPercentages.DEFAULT;
+    }
+
+    private static boolean canEditPhysics(UUID player) {
+        return PermissionsModule.get().hasPermission(player, BoatPhysicsSettings.EDIT_PERMISSION);
     }
 
     static final class Input {
@@ -131,6 +159,8 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
                         data -> data.idleRoll).add()
                 .append(new KeyedCodec<>("@RowingPitch", Codec.BOOLEAN), (data, value) -> data.rowingPitch = value,
                         data -> data.rowingPitch).add()
+                .append(new KeyedCodec<>("@EnhancedPhysics", Codec.BOOLEAN),
+                        (data, value) -> data.enhancedPhysics = value, data -> data.enhancedPhysics).add()
                 .build();
 
         private String action = "";
@@ -139,5 +169,6 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
         private String mode;
         private Boolean idleRoll;
         private Boolean rowingPitch;
+        private Boolean enhancedPhysics;
     }
 }

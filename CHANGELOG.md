@@ -4,9 +4,11 @@
 
 Initial release for Hytale **0.8.0-pre.6**.
 
-- Boats leave foam wakes and produce sounds that respond to movement.
-- Boats pitch gently as you row. The speed of the animation varies with the boat's movement.
-- Stationary boats gently rock from side to side while the entire hull is over water.
-- Improved interaction with boats that are out of water. Now you can directly pick them up to move them faster.
-- Use `/boat_settings`, to open an in-game menu to customize your preferences.
-- Language support: English and Spanish.
+- Moving boats leave foam wakes and produce water sounds.
+- Boats pitch gently while rowing, with the animation speed matched to the boat's movement.
+- Stationary boats rock gently from side to side when the entire hull is over water.
+- Players can pick up boats that are ashore or stranded at the shoreline.
+- Boats retain momentum on the water and slow down gradually when the pilot stops rowing or dismounts.
+- Moving boats, players, and other entities with collision can push boats without a pilot and piloted boats that are stationary.
+- Run `/boat_settings` to customize your preferences in game.
+- The mod supports English and Spanish.
