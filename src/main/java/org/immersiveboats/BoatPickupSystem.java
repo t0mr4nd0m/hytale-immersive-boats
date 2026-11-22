@@ -22,6 +22,7 @@ import com.hypixel.hytale.server.core.inventory.ItemStack;
 import com.hypixel.hytale.server.core.modules.collision.CollisionConfig;
 import com.hypixel.hytale.server.core.modules.collision.CollisionModule;
 import com.hypixel.hytale.server.core.modules.collision.CollisionResult;
+import com.hypixel.hytale.server.core.modules.entity.component.BoundingBox;
 import com.hypixel.hytale.server.core.modules.entity.component.ModelComponent;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
 import com.hypixel.hytale.server.core.modules.entity.item.ItemComponent;
@@ -121,70 +122,54 @@ final class BoatPickupSystem extends EntityEventSystem<EntityStore, UseEntityEve
         var states = movement == null ? null : movement.getMovementStates();
         var transform = accessor.getComponent(target, TransformComponent.getComponentType());
         var model = accessor.getComponent(target, ModelComponent.getComponentType());
-        var hull = model == null ? null : model.getModel().getBoundingBox();
-        if (transform == null || hull == null) {
+        var bounds = BoatHull.bounds(model, accessor.getComponent(target, BoundingBox.getComponentType()));
+        if (transform == null || bounds == null) {
             return true;
         }
         var chunks = world.getChunkStore();
-        if (isDry(chunks, transform, hull)) {
+        var position = transform.getPosition();
+        double yaw = transform.getRotation().yaw();
+        var hull = BoatHull.forBoat(bounds, yaw);
+        if (isDry(chunks, position, hull)) {
             return false;
         }
         // Hytale marks the mount idle when its driver dismounts, even if a tip still touches water.
         if (states == null || !states.idle || !states.horizontalIdle) {
             return true;
         }
-        var center = new Box(-0.05, hull.min.y, -0.05, 0.05, hull.max.y, 0.05);
-        if (!isDry(chunks, transform, center)) {
+        var center = new Box(-0.05, hull.bottom(), -0.05, 0.05, hull.top(), 0.05);
+        if (!isDry(chunks, position, BoatHull.forBoat(center, yaw))) {
             return true;
         }
-        var support = new Box(-0.05, hull.min.y - BOAT_DRAFT, -0.05, 0.05, hull.min.y, 0.05);
-        return CollisionModule.get().validatePosition(world, support, transform.getPosition(),
+        var support = new Box(-0.05, hull.bottom() - BOAT_DRAFT, -0.05, 0.05, hull.bottom(), 0.05);
+        return CollisionModule.get().validatePosition(world, support, position,
                 CollisionConfig.MATERIAL_SOLID, null, (_, _, _, config) -> {
                     var block = config.blockType;
                     return block != null && (block.getGathering() == null || !block.getGathering().isSoft());
                 }, new CollisionResult()) != CollisionModule.VALIDATE_INVALID;
     }
 
-    private static boolean isDry(ChunkStore chunks, TransformComponent transform, Box hull) {
-        var position = transform.getPosition();
-        // The model and its hull face half a turn away from the body's yaw.
-        double yaw = transform.getRotation().yaw() - Math.PI;
-        double sin = Math.sin(yaw);
-        double cos = Math.cos(yaw);
-        var center = new Vector3d((hull.min.x + hull.max.x) * 0.5, 0, (hull.min.z + hull.max.z) * 0.5)
-                .rotateY(yaw).add(position);
-        double halfWidth = (hull.max.x - hull.min.x) * 0.5;
-        double halfLength = (hull.max.z - hull.min.z) * 0.5;
-        double extentX = halfWidth * Math.abs(cos) + halfLength * Math.abs(sin);
-        double extentZ = halfWidth * Math.abs(sin) + halfLength * Math.abs(cos);
-        double blockRadius = (Math.abs(sin) + Math.abs(cos)) * 0.5;
-        double keel = position.y + hull.min.y - BOAT_DRAFT;
-        double top = position.y + hull.max.y;
-        for (int x = (int) Math.floor(center.x - extentX); x < Math.ceil(center.x + extentX); x++) {
-            for (int z = (int) Math.floor(center.z - extentZ); z < Math.ceil(center.z + extentZ); z++) {
-                double dx = x + 0.5 - center.x;
-                double dz = z + 0.5 - center.z;
-                if (Math.abs(dx * cos - dz * sin) >= halfWidth + blockRadius
-                        || Math.abs(dx * sin + dz * cos) >= halfLength + blockRadius) {
-                    continue;
+    private static boolean isDry(ChunkStore chunks, Vector3d position, BoatHull hull) {
+        double keel = position.y + hull.bottom() - BOAT_DRAFT;
+        // A full water block immediately below the keel can touch it at an integer height.
+        int minY = (int) Math.ceil(keel) - 1;
+        int maxY = (int) Math.ceil(position.y + hull.top());
+        return hull.allColumns(position, (x, z) -> {
+            for (int y = minY; y < maxY; y++) {
+                var sectionRef = chunks.getChunkSectionReferenceAtBlock(x, y, z);
+                if (sectionRef == null || !sectionRef.isValid()) {
+                    return false;
                 }
-                // A full water block immediately below the keel can touch it at an integer height.
-                for (int y = (int) Math.ceil(keel) - 1; y < Math.ceil(top); y++) {
-                    var sectionRef = chunks.getChunkSectionReferenceAtBlock(x, y, z);
-                    if (sectionRef == null || !sectionRef.isValid()) {
+                var section = chunks.getStore().getComponent(sectionRef, FluidSection.getComponentType());
+                var fluid = section == null ? null : section.getFluid(x, y, z);
+                if (fluid != null && "Water".equals(fluid.getFluidFXId())) {
+                    int level = section.getFluidLevel(x, y, z);
+                    if (level > 0 && y + Math.min(1.0, (double) level / fluid.getMaxFluidLevel()) >= keel) {
                         return false;
-                    }
-                    var section = chunks.getStore().getComponent(sectionRef, FluidSection.getComponentType());
-                    var fluid = section == null ? null : section.getFluid(x, y, z);
-                    if (fluid != null && "Water".equals(fluid.getFluidFXId())) {
-                        int level = section.getFluidLevel(x, y, z);
-                        if (level > 0 && y + Math.min(1.0, (double) level / fluid.getMaxFluidLevel()) >= keel) {
-                            return false;
-                        }
                     }
                 }
             }
-        }
-        return true;
+            return true;
+        });
     }
 }

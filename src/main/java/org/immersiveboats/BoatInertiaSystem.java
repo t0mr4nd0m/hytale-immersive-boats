@@ -144,8 +144,11 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
         state.pilotPushCooldown = Math.max(0, state.pilotPushCooldown - dt);
 
         var world = store.getExternalData().getWorld();
-        var bounds = boatBounds(commands, boat, boundingBox);
-        var hull = Hull.of(bounds, transform.getRotation().yaw() - Math.PI);
+        var bounds = BoatHull.bounds(chunk.getComponent(index, ModelComponent.getComponentType()), boundingBox);
+        if (bounds == null) {
+            return;
+        }
+        var hull = BoatHull.forBoat(bounds, transform.getRotation().yaw());
         if (!navigable(world, position, hull)) {
             state.stop();
             state.wasRowing = false;
@@ -155,7 +158,7 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
             var contacts = nearby(commands, boat, position, false);
             if (pilot != null) {
                 var lastVelocity = new Vector3d(state.velocity);
-                var collisionHull = Hull.of(boundingBox.getBoundingBox(), 0);
+                var collisionHull = BoatHull.of(boundingBox.getBoundingBox(), 0);
                 samplePilot(world, commands, boat, state, hull, collisionHull, state.previous, position, dt);
                 receiveEntityPush(commands, boat, state, hull, position, contacts, dt);
                 updatePilotGlide(world, commands, boat, pilot, state, hull, position, lastVelocity, dt);
@@ -171,7 +174,7 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
     }
 
     private void receiveEntityPush(CommandBuffer<EntityStore> commands, Ref<EntityStore> boat, Inertia state,
-                                   Hull hull, Vector3d position, ArrayList<Obstacle> contacts, double dt) {
+                                   BoatHull hull, Vector3d position, ArrayList<Obstacle> contacts, double dt) {
         var previousPositions = state.entityPositions;
         var currentPositions = state.nextEntityPositions;
         currentPositions.clear();
@@ -190,8 +193,8 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
             currentPositions.put(entity.ref, current);
             var previous = previousPositions.get(entity.ref);
             // Standing in the hull or stepping off it is not a lateral impact.
-            if (previous == null || hull.isOnBoard(position, current, entity.hull.bottom)
-                    || hull.isOnBoard(state.previous, previous, entity.hull.bottom)) {
+            if (previous == null || hull.isOnBoard(position, current, entity.hull.bottom())
+                    || hull.isOnBoard(state.previous, previous, entity.hull.bottom())) {
                 continue;
             }
             var travel = current.sub(previous, new Vector3d());
@@ -226,7 +229,7 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
     }
 
     private void updatePilotGlide(World world, CommandBuffer<EntityStore> commands, Ref<EntityStore> boat,
-                                  Ref<EntityStore> pilot, Inertia state, Hull hull, Vector3d position,
+                                  Ref<EntityStore> pilot, Inertia state, BoatHull hull, Vector3d position,
                                   Vector3d lastVelocity, double dt) {
         state.glideRearm = Math.max(0, state.glideRearm - dt);
         var movement = commands.getComponent(boat, MovementStatesComponent.getComponentType());
@@ -299,7 +302,7 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
     }
 
     private void samplePilot(World world, CommandBuffer<EntityStore> commands, Ref<EntityStore> boat, Inertia state,
-                             Hull hull, Hull collisionHull, Vector3d previous, Vector3d position, double dt) {
+                             BoatHull hull, BoatHull collisionHull, Vector3d previous, Vector3d position, double dt) {
         var travel = position.sub(previous, new Vector3d());
         double distance = Math.hypot(travel.x, travel.z);
         if (distance > 1.5 || Math.abs(travel.y) > 0.5) {
@@ -327,7 +330,7 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
         }
     }
 
-    private void drift(World world, CommandBuffer<EntityStore> commands, Inertia state, Hull hull, Box bounds,
+    private void drift(World world, CommandBuffer<EntityStore> commands, Inertia state, BoatHull hull, Box bounds,
                        TransformComponent transform, ArrayList<Obstacle> contacts, double dt) {
         var position = transform.getPosition();
         if (state.velocity.lengthSquared() < STOP_SPEED * STOP_SPEED
@@ -348,7 +351,7 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
         }
     }
 
-    private void slide(World world, CommandBuffer<EntityStore> commands, Inertia state, Hull hull,
+    private void slide(World world, CommandBuffer<EntityStore> commands, Inertia state, BoatHull hull,
                        Vector3d position, ArrayList<Obstacle> contacts, CollisionResult result, double dt) {
         double decay = Math.exp(-WATER_DRAG * dt);
         var travel = state.velocity.mul((1 - decay) / WATER_DRAG, new Vector3d());
@@ -383,12 +386,12 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
         state.velocity.mul(decay);
     }
 
-    private static boolean canSlide(World world, Hull hull, Box[] boxes, Vector3d position, Vector3d candidate,
+    private static boolean canSlide(World world, BoatHull hull, Box[] boxes, Vector3d position, Vector3d candidate,
                                     CollisionResult result) {
         return navigable(world, candidate, hull) && !blockedByLand(world, boxes, position, boxes, candidate, result);
     }
 
-    private static void turn(World world, Inertia state, Hull hull, Box bounds, TransformComponent transform,
+    private static void turn(World world, Inertia state, BoatHull hull, Box bounds, TransformComponent transform,
                              ArrayList<Obstacle> contacts, CollisionResult result, double dt) {
         double decay = Math.exp(-ANGULAR_DRAG * dt);
         double arc = state.angularSpeed * (1 - decay) / ANGULAR_DRAG;
@@ -398,7 +401,7 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
         var rotation = transform.getRotation();
         for (int i = 0; i < steps; i++) {
             float yaw = (float) Math.IEEEremainder(rotation.yaw() + step, 2 * Math.PI);
-            var next = Hull.of(bounds, yaw - Math.PI);
+            var next = BoatHull.forBoat(bounds, yaw);
             if (!navigable(world, position, next)
                     || blockedByLand(world, hull.blockBoxes(), position, next.blockBoxes(), position, result)
                     || obstructsTurn(hull, next, position, contacts)) {
@@ -411,7 +414,7 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
         state.angularSpeed *= decay;
     }
 
-    private static boolean obstructsTurn(Hull hull, Hull next, Vector3d position, ArrayList<Obstacle> contacts) {
+    private static boolean obstructsTurn(BoatHull hull, BoatHull next, Vector3d position, ArrayList<Obstacle> contacts) {
         var center = hull.center(position);
         var nextCenter = next.center(position);
         for (var other : contacts) {
@@ -450,10 +453,16 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
             var transform = commands.getComponent(other, TransformComponent.getComponentType());
             var bounds = commands.getComponent(other, BoundingBox.getComponentType());
             if (transform != null && bounds != null) {
-                var box = otherBoat ? boatBounds(commands, other, bounds) : bounds.getBoundingBox();
-                var hull = Hull.of(box, otherBoat ? transform.getRotation().yaw() - Math.PI : 0);
+                var box = bounds.getBoundingBox();
+                var hullBounds = otherBoat
+                        ? BoatHull.bounds(commands.getComponent(other, ModelComponent.getComponentType()), bounds) : box;
+                if (hullBounds == null) {
+                    continue;
+                }
+                var hull = otherBoat ? BoatHull.forBoat(hullBounds, transform.getRotation().yaw())
+                        : BoatHull.of(hullBounds, 0);
                 boolean item = commands.getComponent(other, ItemComponent.getComponentType()) != null;
-                var collisionHull = boatsOnly ? Hull.of(bounds.getBoundingBox(), 0) : hull;
+                var collisionHull = boatsOnly ? BoatHull.of(bounds.getBoundingBox(), 0) : hull;
                 contacts.add(new Obstacle(other, otherBoat, item, hull, collisionHull, transform.getPosition()));
             }
         }
@@ -461,12 +470,12 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
     }
 
     private boolean contact(World world, CommandBuffer<EntityStore> commands, ArrayList<Obstacle> contacts,
-                            Hull hull, Vector3d candidate, Vector3d velocity, double margin, boolean transfer) {
+                            BoatHull hull, Vector3d candidate, Vector3d velocity, double margin, boolean transfer) {
         return contact(world, commands, contacts, hull, candidate, velocity, margin, transfer, false);
     }
 
     private boolean contact(World world, CommandBuffer<EntityStore> commands, ArrayList<Obstacle> contacts,
-                            Hull hull, Vector3d candidate, Vector3d velocity, double margin, boolean transfer,
+                            BoatHull hull, Vector3d candidate, Vector3d velocity, double margin, boolean transfer,
                             boolean useCollisionBounds) {
         var center = hull.center(candidate);
         var normal = new Vector3d();
@@ -526,31 +535,24 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
         state.wasRowing = false;
     }
 
-    private static Box boatBounds(CommandBuffer<EntityStore> commands, Ref<EntityStore> boat, BoundingBox bounds) {
-        var model = commands.getComponent(boat, ModelComponent.getComponentType());
-        var hull = model == null ? null : model.getModel().getBoundingBox();
-        return hull == null ? bounds.getBoundingBox() : hull;
-    }
-
     private static Ref<EntityStore> getPilot(CommandBuffer<EntityStore> commands, Ref<EntityStore> boat) {
         var riders = commands.getComponent(boat, MountedByComponent.getComponentType());
         var driver = riders == null ? null : riders.getPassengerInSeat(MountedComponent.DRIVER_SEAT_INDEX, commands);
         return driver != null && driver.isValid() ? driver : null;
     }
 
-    private static boolean navigable(World world, Vector3d position, Hull hull) {
-        double keel = position.y + hull.bottom;
+    private static boolean navigable(World world, Vector3d position, BoatHull hull) {
+        double keel = position.y + hull.bottom();
         if (waterAtKeel(world, position.x, keel, position.z)) {
             return true;
         }
         for (int across = -1; across <= 1; across++) {
             for (int along = -1; along <= 1; along++) {
-                double x = hull.x + across * hull.halfWidth * 0.85;
-                double z = hull.z + along * hull.halfLength * 0.85;
-                if (waterAtKeel(world, position.x + x * hull.cos + z * hull.sin, keel,
-                        position.z + z * hull.cos - x * hull.sin)) {
+                double x = hull.x() + across * hull.halfWidth() * 0.85;
+                double z = hull.z() + along * hull.halfLength() * 0.85;
+                if (waterAtKeel(world, hull.worldX(position, x, z), keel, hull.worldZ(position, x, z))) {
                     // Water under the ends is enough unless the centre is supported by land.
-                    var support = new Box(-0.05, hull.bottom - DRAFT, -0.05, 0.05, hull.bottom, 0.05);
+                    var support = new Box(-0.05, hull.bottom() - DRAFT, -0.05, 0.05, hull.bottom(), 0.05);
                     int validation = CollisionModule.get().validatePosition(world, support, position,
                             CollisionConfig.MATERIAL_SOLID, null, (_, _, _, config) -> isHardBlock(config),
                             new CollisionResult());
@@ -613,91 +615,8 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
         return Math.max(0, depth);
     }
 
-    private record Obstacle(Ref<EntityStore> ref, boolean boat, boolean item, Hull hull, Hull collisionHull,
+    private record Obstacle(Ref<EntityStore> ref, boolean boat, boolean item, BoatHull hull, BoatHull collisionHull,
                             Vector3d position) {
-    }
-
-    private record Hull(double x, double z, double halfWidth, double halfLength,
-                        double bottom, double top, double cos, double sin) {
-        static Hull of(Box box, double yaw) {
-            return new Hull((box.min.x + box.max.x) / 2, (box.min.z + box.max.z) / 2,
-                    (box.max.x - box.min.x) / 2, (box.max.z - box.min.z) / 2,
-                    box.min.y, box.max.y, Math.cos(yaw), Math.sin(yaw));
-        }
-
-        Vector3d center(Vector3d position) {
-            return new Vector3d(position).add(x * cos + z * sin, 0, z * cos - x * sin);
-        }
-
-        boolean isOnBoard(Vector3d position, Vector3d entityPosition, double entityBottom) {
-            double dx = entityPosition.x - position.x;
-            double dz = entityPosition.z - position.z;
-            return entityPosition.y + entityBottom >= position.y + bottom - 0.01
-                    && Math.abs(dx * cos - dz * sin - x) <= halfWidth
-                    && Math.abs(dx * sin + dz * cos - z) <= halfLength;
-        }
-
-        double contactDepth(Vector3d position, Hull other, Vector3d otherPosition, Vector3d delta,
-                            Vector3d velocity, Vector3d normal) {
-            if (position.y + top <= otherPosition.y + other.bottom
-                    || otherPosition.y + other.top <= position.y + bottom) {
-                return Double.NEGATIVE_INFINITY;
-            }
-            // The shallowest overlap identifies the face in contact, even when the centres are far offset.
-            double minDepth = Double.POSITIVE_INFINITY;
-            double bestSpeed = Double.NEGATIVE_INFINITY;
-            for (int i = 0; i < 4; i++) {
-                var axes = i < 2 ? this : other;
-                boolean lateral = i % 2 == 0;
-                double ax = lateral ? axes.cos : axes.sin;
-                double az = lateral ? -axes.sin : axes.cos;
-                double projection = delta.x * ax + delta.z * az;
-                double depth = radius(ax, az) + other.radius(ax, az) - Math.abs(projection);
-                double sign = projection < 0 ? -1 : 1;
-                double speed = velocity == null ? 0 : sign * (velocity.x * ax + velocity.z * az);
-                if (depth < minDepth - 1e-9 || (Math.abs(depth - minDepth) <= 1e-9 && speed > bestSpeed)) {
-                    bestSpeed = speed;
-                    if (normal != null) {
-                        normal.set(sign * ax, 0, sign * az);
-                    }
-                }
-                minDepth = Math.min(minDepth, depth);
-            }
-            return minDepth;
-        }
-
-        double impactLever(Hull target, Vector3d delta, Vector3d normal) {
-            // Estimate the contact point from the overlap along the tangent of the struck face.
-            double tx = -normal.z;
-            double tz = normal.x;
-            double sourceCenter = -(delta.x * tx + delta.z * tz);
-            double sourceRadius = radius(tx, tz);
-            double targetRadius = target.radius(tx, tz);
-            double start = Math.max(-targetRadius, sourceCenter - sourceRadius);
-            double end = Math.min(targetRadius, sourceCenter + sourceRadius);
-            return Math.clamp((start + end) * 0.5, -targetRadius, targetRadius);
-        }
-
-        private double radius(double ax, double az) {
-            return halfWidth * Math.abs(ax * cos - az * sin) + halfLength * Math.abs(ax * sin + az * cos);
-        }
-
-        Box[] blockBoxes() {
-            // Match the inset hull used by SpawnBoatInteraction for terrain collisions.
-            double inset = 0.2;
-            double width = Math.max(0, halfWidth - inset);
-            double stern = z - halfLength + inset + width;
-            double bow = z + halfLength - inset - width * 0.6;
-            var boxes = new Box[4];
-            for (int i = 0; i < boxes.length; i++) {
-                double size = i == boxes.length - 1 ? width * 0.6 : width;
-                double localZ = stern + (bow - stern) * i / (boxes.length - 1);
-                double cx = x * cos + localZ * sin;
-                double cz = localZ * cos - x * sin;
-                boxes[i] = new Box(cx - size, bottom, cz - size, cx + size, top, cz + size);
-            }
-            return boxes;
-        }
     }
 
     static final class Inertia implements Component<EntityStore> {

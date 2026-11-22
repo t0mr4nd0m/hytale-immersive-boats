@@ -21,6 +21,7 @@ import com.hypixel.hytale.server.core.asset.type.model.config.ModelAttachment;
 import com.hypixel.hytale.server.core.asset.type.soundevent.config.SoundEvent;
 import com.hypixel.hytale.server.core.entity.AnimationUtils;
 import com.hypixel.hytale.server.core.modules.entity.EntityModule;
+import com.hypixel.hytale.server.core.modules.entity.component.BoundingBox;
 import com.hypixel.hytale.server.core.modules.entity.component.ModelComponent;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
 import com.hypixel.hytale.server.core.modules.entity.tracker.EntityTrackerSystems;
@@ -106,9 +107,6 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private static final float IDLE_DELAY_SECONDS = 0.5f;
     private static final double MAX_IDLE_SPEED = 0.05;
     private static final double MAX_IDLE_TURN_SPEED = Math.toRadians(2);
-    private static final double HULL_HALF_WIDTH = 0.45;
-    private static final double HULL_HALF_LENGTH = 0.77;
-    private static final double HULL_CENTER_OFFSET = 0.23;
 
     private final ComponentType<EntityStore, WakeState> wakeState;
     private final BoatPlayerSettings playerSettings;
@@ -167,7 +165,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         boolean idleRoll = preferences == null || preferences.idleRoll();
         state.idleTime = idleRoll && still ? Math.min(IDLE_DELAY_SECONDS, state.idleTime + dt) : 0;
         boolean idle = state.idleTime >= IDLE_DELAY_SECONDS
-                && hullOverWater(chunks, position, headingX, headingZ);
+                && hullOverWater(chunks, position, yaw, model, chunk.getComponent(index, BoundingBox.getComponentType()));
         boolean rockingWhileRowing = preferences != null && preferences.rowingPitch();
         if (idle || driverPlayer == null) {
             state.rowingMotion.reset();
@@ -451,30 +449,11 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         }
     }
 
-    private static boolean hullOverWater(ChunkStore chunks, Vector3d position, double headingX, double headingZ) {
-        // The vanilla boat hitbox extends from Z -0.54 to 1.00 and from X -0.45 to 0.45.
-        double centerX = position.x + headingX * HULL_CENTER_OFFSET;
-        double centerZ = position.z + headingZ * HULL_CENTER_OFFSET;
-        double absX = Math.abs(headingX);
-        double absZ = Math.abs(headingZ);
-        double extentX = HULL_HALF_LENGTH * absX + HULL_HALF_WIDTH * absZ;
-        double extentZ = HULL_HALF_LENGTH * absZ + HULL_HALF_WIDTH * absX;
-        double blockRadius = 0.5 * (absX + absZ);
-        int maxX = (int) Math.ceil(centerX + extentX);
-        int maxZ = (int) Math.ceil(centerZ + extentZ);
-        for (int x = (int) Math.floor(centerX - extentX); x < maxX; x++) {
-            for (int z = (int) Math.floor(centerZ - extentZ); z < maxZ; z++) {
-                // The loop bounds test the world axes. These two projections test the hull axes.
-                double dx = x + 0.5 - centerX;
-                double dz = z + 0.5 - centerZ;
-                if (Math.abs(dx * headingX + dz * headingZ) < HULL_HALF_LENGTH + blockRadius
-                        && Math.abs(dx * headingZ - dz * headingX) < HULL_HALF_WIDTH + blockRadius
-                        && Double.isNaN(waterSurface(chunks, x + 0.5, position.y, z + 0.5))) {
-                    return false;
-                }
-            }
-        }
-        return true;
+    private static boolean hullOverWater(ChunkStore chunks, Vector3d position, double yaw,
+                                         ModelComponent model, BoundingBox collisionBounds) {
+        var bounds = BoatHull.bounds(model, collisionBounds);
+        return bounds != null && BoatHull.forBoat(bounds, yaw).allColumns(position,
+                (x, z) -> !Double.isNaN(waterSurface(chunks, x + 0.5, position.y, z + 0.5)));
     }
 
     private static boolean updateBoatModel(Ref<EntityStore> boat, ModelComponent component, boolean showOars,
