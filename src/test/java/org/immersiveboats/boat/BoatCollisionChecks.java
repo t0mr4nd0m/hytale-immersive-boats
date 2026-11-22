@@ -1,4 +1,4 @@
-package org.immersiveboats;
+package org.immersiveboats.boat;
 
 import com.hypixel.hytale.math.shape.Box;
 import org.joml.Vector3d;

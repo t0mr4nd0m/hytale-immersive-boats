@@ -2,7 +2,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.immersiveboats.BoatAnimation;
+import org.immersiveboats.boat.BoatAnimation;
 import org.joml.Quaterniond;
 
 import java.nio.file.Files;

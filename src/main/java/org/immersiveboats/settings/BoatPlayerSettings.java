@@ -1,4 +1,4 @@
-package org.immersiveboats;
+package org.immersiveboats.settings;
 
 import com.hypixel.hytale.logger.HytaleLogger;
 
@@ -12,8 +12,8 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
-final class BoatPlayerSettings {
-    static final int MAX_PERCENT = 100;
+public final class BoatPlayerSettings {
+    public static final int MAX_PERCENT = 100;
     private static final Values DEFAULTS = new Values(MAX_PERCENT, MAX_PERCENT, LandInteraction.PICK_UP,
             true, true, true);
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
@@ -28,11 +28,11 @@ final class BoatPlayerSettings {
     private final Path playersDirectory;
     private final Map<UUID, Values> values = new ConcurrentHashMap<>();
 
-    BoatPlayerSettings(Path dataDirectory) {
+    public BoatPlayerSettings(Path dataDirectory) {
         playersDirectory = dataDirectory.resolve("players");
     }
 
-    void load() throws IOException {
+    public void load() throws IOException {
         if (!Files.notExists(playersDirectory)) {
             try (var files = Files.newDirectoryStream(playersDirectory, "*" + SUFFIX)) {
                 for (var file : files) {
@@ -51,7 +51,7 @@ final class BoatPlayerSettings {
         }
     }
 
-    Values get(UUID player) {
+    public Values get(UUID player) {
         return values.getOrDefault(player, DEFAULTS);
     }
 
@@ -128,7 +128,7 @@ final class BoatPlayerSettings {
         }
     }
 
-    record Values(int volume, int opacity, LandInteraction interaction, boolean idleRoll, boolean rowingPitch,
+    public record Values(int volume, int opacity, LandInteraction interaction, boolean idleRoll, boolean rowingPitch,
                   boolean showOars) {
     }
 }

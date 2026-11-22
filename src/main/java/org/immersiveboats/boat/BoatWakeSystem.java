@@ -1,4 +1,4 @@
-package org.immersiveboats;
+package org.immersiveboats.boat;
 
 import com.hypixel.hytale.builtin.mounts.MountedByComponent;
 import com.hypixel.hytale.builtin.mounts.MountedComponent;
@@ -32,6 +32,7 @@ import com.hypixel.hytale.server.core.universe.world.SoundUtil;
 import com.hypixel.hytale.server.core.universe.world.chunk.section.FluidSection;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import org.immersiveboats.settings.BoatPlayerSettings;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
@@ -42,7 +43,7 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nonnull;
 
-final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
+public final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private static final String PARTICLE = "ImmersiveBoats_Boat_Wake";
     private static final String PADDLE_SOUND = "SFX_Water_MoveOut";
     private static final String PADDLE_SPLASH = "ImmersiveBoats_Boat_Paddle_Splash";
@@ -89,7 +90,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private final Query<EntityStore> query = Query.and(
             BoatComponent.getComponentType(), TransformComponent.getComponentType());
 
-    BoatWakeSystem(ComponentType<EntityStore, WakeState> wakeState, BoatPlayerSettings playerSettings) {
+    public BoatWakeSystem(ComponentType<EntityStore, WakeState> wakeState, BoatPlayerSettings playerSettings) {
         super(0.10f);
         this.wakeState = wakeState;
         this.playerSettings = playerSettings;
@@ -548,7 +549,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         return driver != null && driver.isValid() ? driver : null;
     }
 
-    static final class WakeState implements Component<EntityStore> {
+    public static final class WakeState implements Component<EntityStore> {
         private final Vector3d previous = new Vector3d();
         private double previousYaw;
         private float paddleCooldown;

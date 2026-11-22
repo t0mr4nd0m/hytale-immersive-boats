@@ -1,6 +1,6 @@
-package org.immersiveboats;
+package org.immersiveboats.settings;
 
-enum LandInteraction {
+public enum LandInteraction {
     BOARD("board"),
     PICK_UP("pick-up"),
     DROP("drop");

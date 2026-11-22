@@ -103,7 +103,7 @@
                             <goal>java</goal>
                         </goals>
                         <configuration>
-                            <mainClass>org.immersiveboats.BoatRowingChecks</mainClass>
+                            <mainClass>org.immersiveboats.boat.BoatRowingChecks</mainClass>
                             <classpathScope>test</classpathScope>
                             <skip>${skipTests}</skip>
                         </configuration>
@@ -115,7 +115,7 @@
                             <goal>java</goal>
                         </goals>
                         <configuration>
-                            <mainClass>org.immersiveboats.BoatCollisionChecks</mainClass>
+                            <mainClass>org.immersiveboats.boat.BoatCollisionChecks</mainClass>
                             <classpathScope>test</classpathScope>
                             <skip>${skipTests}</skip>
                         </configuration>
@@ -127,7 +127,7 @@
                             <goal>java</goal>
                         </goals>
                         <configuration>
-                            <mainClass>org.immersiveboats.BoatShorelineChecks</mainClass>
+                            <mainClass>org.immersiveboats.boat.BoatShorelineChecks</mainClass>
                             <classpathScope>test</classpathScope>
                             <skip>${skipTests}</skip>
                         </configuration>

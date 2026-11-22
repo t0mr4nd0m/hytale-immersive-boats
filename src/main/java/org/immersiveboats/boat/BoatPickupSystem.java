@@ -1,4 +1,4 @@
-package org.immersiveboats;
+package org.immersiveboats.boat;
 
 import com.hypixel.hytale.builtin.mounts.MountedByComponent;
 import com.hypixel.hytale.builtin.mounts.MountedComponent;
@@ -31,18 +31,20 @@ import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.chunk.section.FluidSection;
 import com.hypixel.hytale.server.core.universe.world.storage.ChunkStore;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import org.immersiveboats.settings.BoatPlayerSettings;
+import org.immersiveboats.settings.LandInteraction;
 import org.joml.Vector3d;
 
 import java.util.function.BooleanSupplier;
 import javax.annotation.Nonnull;
 
-final class BoatPickupSystem extends EntityEventSystem<EntityStore, UseEntityEvent.Pre> {
+public final class BoatPickupSystem extends EntityEventSystem<EntityStore, UseEntityEvent.Pre> {
     // Match the draft used by Hytale's SpawnBoatInteraction. Water touching the keel still counts.
     private static final double BOAT_DRAFT = 0.09;
 
     private final BoatPlayerSettings playerSettings;
 
-    BoatPickupSystem(BoatPlayerSettings playerSettings) {
+    public BoatPickupSystem(BoatPlayerSettings playerSettings) {
         super(UseEntityEvent.Pre.class);
         this.playerSettings = playerSettings;
     }

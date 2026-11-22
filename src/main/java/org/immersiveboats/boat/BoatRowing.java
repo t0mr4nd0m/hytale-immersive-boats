@@ -1,8 +1,8 @@
-package org.immersiveboats;
+package org.immersiveboats.boat;
 
 import java.util.function.Predicate;
 
-import static org.immersiveboats.BoatAnimation.*;
+import static org.immersiveboats.boat.BoatAnimation.*;
 
 final class BoatRowing {
     private static final float ROWING_CYCLE_SECONDS = (float) ROWING_CYCLE_FRAMES / FRAMES_PER_SECOND;

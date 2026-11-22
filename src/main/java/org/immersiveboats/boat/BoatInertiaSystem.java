@@ -1,4 +1,4 @@
-package org.immersiveboats;
+package org.immersiveboats.boat;
 
 import com.hypixel.hytale.builtin.mounts.MountSystems;
 import com.hypixel.hytale.builtin.mounts.MountedByComponent;
@@ -32,6 +32,7 @@ import com.hypixel.hytale.server.core.modules.splitvelocity.VelocityConfig;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import org.immersiveboats.settings.BoatPhysicsSettings;
 import org.joml.Vector3d;
 
 import javax.annotation.Nonnull;
@@ -42,7 +43,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 
-final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
+public final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
     private static final double WATER_DRAG = 0.85;
     private static final double ANGULAR_DRAG = 2.2;
     private static final double MAX_ANGULAR_SPEED = 1.1;
@@ -76,7 +77,7 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
             new SystemDependency<>(Order.AFTER, TangiableEntitySpatialSystem.class),
             new SystemDependency<>(Order.BEFORE, BoatWakeSystem.class));
 
-    BoatInertiaSystem(ComponentType<EntityStore, Inertia> inertia, BoatPhysicsSettings settings) {
+    public BoatInertiaSystem(ComponentType<EntityStore, Inertia> inertia, BoatPhysicsSettings settings) {
         this.inertia = inertia;
         this.settings = settings;
         pilotDrag.setAirResistance(0.97f);
@@ -665,11 +666,11 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
                             Vector3d position) {
     }
 
-    static final class CaptureContactVelocity extends EntityTickingSystem<EntityStore> {
+    public static final class CaptureContactVelocity extends EntityTickingSystem<EntityStore> {
         private final ComponentType<EntityStore, Inertia> inertia;
         private final Query<EntityStore> query;
 
-        CaptureContactVelocity(ComponentType<EntityStore, Inertia> inertia) {
+        public CaptureContactVelocity(ComponentType<EntityStore, Inertia> inertia) {
             this.inertia = inertia;
             query = Query.and(BoatComponent.getComponentType(), TransformComponent.getComponentType(), inertia);
         }
@@ -703,7 +704,7 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
         }
     }
 
-    static final class Inertia implements Component<EntityStore> {
+    public static final class Inertia implements Component<EntityStore> {
         private final Vector3d previous = new Vector3d();
         private final Vector3d velocity = new Vector3d();
         private final Vector3d contactVelocity = new Vector3d();

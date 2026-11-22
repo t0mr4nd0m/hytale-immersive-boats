@@ -1,4 +1,4 @@
-package org.immersiveboats;
+package org.immersiveboats.settings;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -6,22 +6,22 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Properties;
 
-final class BoatPhysicsSettings {
+public final class BoatPhysicsSettings {
     static final String EDIT_PERMISSION = "immersiveboats.settings.physics";
     private static final String ENABLED = "enhanced-physics";
 
     private final Path file;
     private volatile State state = new State(true);
 
-    BoatPhysicsSettings(Path file) {
+    public BoatPhysicsSettings(Path file) {
         this.file = file;
     }
 
-    State state() {
+    public State state() {
         return state;
     }
 
-    void load() throws IOException {
+    public void load() throws IOException {
         if (Files.notExists(file)) {
             return;
         }
@@ -51,6 +51,6 @@ final class BoatPhysicsSettings {
         }
     }
 
-    record State(boolean enabled) {
+    public record State(boolean enabled) {
     }
 }

@@ -1,4 +1,4 @@
-package org.immersiveboats;
+package org.immersiveboats.settings;
 
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
@@ -11,11 +11,11 @@ import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 
 import javax.annotation.Nonnull;
 
-final class BoatSettingsCommand extends AbstractPlayerCommand {
+public final class BoatSettingsCommand extends AbstractPlayerCommand {
     private final BoatPlayerSettings playerSettings;
     private final BoatPhysicsSettings physics;
 
-    BoatSettingsCommand(BoatPlayerSettings playerSettings, BoatPhysicsSettings physics) {
+    public BoatSettingsCommand(BoatPlayerSettings playerSettings, BoatPhysicsSettings physics) {
         super("boat_settings", "immersive_boats.settings.description");
         this.playerSettings = playerSettings;
         this.physics = physics;

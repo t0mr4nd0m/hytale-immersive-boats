@@ -1,4 +1,4 @@
-package org.immersiveboats;
+package org.immersiveboats.settings;
 
 import com.hypixel.hytale.codec.Codec;
 import com.hypixel.hytale.codec.KeyedCodec;

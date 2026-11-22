@@ -3,6 +3,13 @@ package org.immersiveboats;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 
+import org.immersiveboats.boat.BoatInertiaSystem;
+import org.immersiveboats.boat.BoatPickupSystem;
+import org.immersiveboats.boat.BoatWakeSystem;
+import org.immersiveboats.settings.BoatPhysicsSettings;
+import org.immersiveboats.settings.BoatPlayerSettings;
+import org.immersiveboats.settings.BoatSettingsCommand;
+
 import java.io.IOException;
 import java.util.logging.Level;
 import javax.annotation.Nonnull;
