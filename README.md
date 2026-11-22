@@ -2,6 +2,16 @@
 
 Immersive Boats makes Hytale's boats feel more realistic with animated oars, foam wakes, water sounds, improved physics, and better interactions (Stop beating your boats to pick them up!).
 
+By T0m.R4nD0m / [t0mr4nd0m@gmail.com](mailto:t0mr4nd0m@gmail.com)
+
+![Platform](https://img.shields.io/badge/platform-Hytale-purple)
+![GitHub release](https://img.shields.io/github/v/release/T0mR4nD0m/hytale-immersive-boats)
+![GitHub last commit](https://img.shields.io/github/last-commit/T0mR4nD0m/hytale-immersive-boats)
+![GitHub repo size](https://img.shields.io/github/repo-size/T0mR4nD0m/hytale-immersive-boats)
+![Java](https://img.shields.io/badge/java-25-orange)
+![Build](https://img.shields.io/badge/build-maven-green)
+![License](https://img.shields.io/github/license/T0mR4nD0m/hytale-immersive-boats)
+
 ## Water effects
 
 - Foam wakes and soft splashes as boats move, even without a pilot.
