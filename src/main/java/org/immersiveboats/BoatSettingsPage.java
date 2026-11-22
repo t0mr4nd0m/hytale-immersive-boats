@@ -26,22 +26,14 @@ import javax.annotation.Nullable;
 
 final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.Input> {
     private static final String TRANSLATIONS = "immersive_boats.settings.";
-    private final PlayerPercentages volumes;
-    private final PlayerPercentages opacities;
-    private final PlayerPreferences<LandInteraction> interactions;
-    private final BoatMotionPreferences motion;
+    private final BoatPlayerSettings playerSettings;
     private final BoatPhysicsSettings physics;
     private boolean editingPhysics;
     private boolean initialPhysics;
 
-    BoatSettingsPage(PlayerRef player, PlayerPercentages volumes, PlayerPercentages opacities,
-                     PlayerPreferences<LandInteraction> interactions, BoatMotionPreferences motion,
-                     BoatPhysicsSettings physics) {
+    BoatSettingsPage(PlayerRef player, BoatPlayerSettings playerSettings, BoatPhysicsSettings physics) {
         super(player, CustomPageLifetime.CanDismiss, Input.CODEC);
-        this.volumes = volumes;
-        this.opacities = opacities;
-        this.interactions = interactions;
-        this.motion = motion;
+        this.playerSettings = playerSettings;
         this.physics = physics;
     }
 
@@ -49,6 +41,7 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
     public void build(@Nonnull Ref<EntityStore> ref, @Nonnull UICommandBuilder commands,
                       @Nonnull UIEventBuilder events, @Nonnull Store<EntityStore> store) {
         UUID player = playerRef.getUuid();
+        var preferences = playerSettings.get(player);
         commands.append("ImmersiveBoats/Settings.ui");
         commands.set("#Heading.Text", Message.translation(TRANSLATIONS + "title"));
         commands.set("#VolumeLabel.Text", Message.translation(TRANSLATIONS + "volume"));
@@ -67,16 +60,16 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
                 Message.translation(TRANSLATIONS + (initialPhysics ? "enabled" : "disabled")));
         commands.set("#Apply.Text", Message.translation(TRANSLATIONS + "apply"));
         commands.set("#Cancel.Text", Message.translation(TRANSLATIONS + "cancel"));
-        commands.set("#Volume.Value", volumes.get(player));
-        commands.set("#Opacity.Value", opacities.get(player));
-        commands.set("#IdleRoll.Value", motion.idleRoll().get(player));
-        commands.set("#RowingPitch.Value", motion.rowingPitch().get(player));
-        commands.set("#ShowOars.Value", motion.showOars().get(player));
+        commands.set("#Volume.Value", preferences.volume());
+        commands.set("#Opacity.Value", preferences.opacity());
+        commands.set("#IdleRoll.Value", preferences.idleRoll());
+        commands.set("#RowingPitch.Value", preferences.rowingPitch());
+        commands.set("#ShowOars.Value", preferences.showOars());
         commands.set("#Mode.Entries", Arrays.stream(LandInteraction.values())
                 .map(mode -> new DropdownEntryInfo(
                         LocalizableString.fromMessageId(TRANSLATIONS + "mode." + mode.argument()), mode.argument()))
                 .toList());
-        commands.set("#Mode.Value", interactions.get(player).argument());
+        commands.set("#Mode.Value", preferences.interaction().argument());
 
         var apply = EventData.of("Action", "apply")
                 .append("@Volume", "#Volume.Value")
@@ -127,12 +120,8 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
             return "physicsPermission";
         }
         try {
-            volumes.set(player, input.volume);
-            opacities.set(player, input.opacity);
-            interactions.set(player, mode);
-            motion.idleRoll().set(player, input.idleRoll);
-            motion.rowingPitch().set(player, input.rowingPitch);
-            motion.showOars().set(player, input.showOars);
+            playerSettings.save(player, new BoatPlayerSettings.Values(input.volume, input.opacity, mode,
+                    input.idleRoll, input.rowingPitch, input.showOars));
             if (changePhysics) {
                 physics.setEnabled(input.enhancedPhysics);
             }
@@ -143,7 +132,7 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
     }
 
     private static boolean isInvalidPercentage(Integer value) {
-        return value == null || value < 0 || value > PlayerPercentages.DEFAULT;
+        return value == null || value < 0 || value > BoatPlayerSettings.MAX_PERCENT;
     }
 
     private static boolean canEditPhysics(UUID player) {

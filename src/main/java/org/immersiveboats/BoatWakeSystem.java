@@ -111,19 +111,14 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private static final double HULL_CENTER_OFFSET = 0.23;
 
     private final ComponentType<EntityStore, WakeState> wakeState;
-    private final PlayerPercentages volumes;
-    private final PlayerPercentages opacities;
-    private final BoatMotionPreferences motion;
+    private final BoatPlayerSettings playerSettings;
     private final Query<EntityStore> query = Query.and(
             BoatComponent.getComponentType(), TransformComponent.getComponentType());
 
-    BoatWakeSystem(ComponentType<EntityStore, WakeState> wakeState, PlayerPercentages volumes,
-                   PlayerPercentages opacities, BoatMotionPreferences motion) {
+    BoatWakeSystem(ComponentType<EntityStore, WakeState> wakeState, BoatPlayerSettings playerSettings) {
         super(0.10f);
         this.wakeState = wakeState;
-        this.volumes = volumes;
-        this.opacities = opacities;
-        this.motion = motion;
+        this.playerSettings = playerSettings;
     }
 
     @Override
@@ -145,7 +140,8 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         double yaw = transform.getRotation().yaw();
         var driver = getDriver(chunk.getComponent(index, MountedByComponent.getComponentType()), commands);
         var driverPlayer = driver == null ? null : commands.getComponent(driver, PlayerRef.getComponentType());
-        boolean showOars = driverPlayer != null && motion.showOars().get(driverPlayer.getUuid());
+        var preferences = driverPlayer == null ? null : playerSettings.get(driverPlayer.getUuid());
+        boolean showOars = preferences != null && preferences.showOars();
         var model = chunk.getComponent(index, ModelComponent.getComponentType());
         boolean modelChanged = updateBoatModel(boat, model, showOars, commands);
         if (state == null) {
@@ -168,11 +164,11 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
         var chunks = store.getExternalData().getWorld().getChunkStore();
         boolean still = Math.hypot(travel, dy) <= MAX_IDLE_SPEED * dt
                 && Math.abs(turn) <= MAX_IDLE_TURN_SPEED * dt;
-        boolean idleRoll = driverPlayer == null || motion.idleRoll().get(driverPlayer.getUuid());
+        boolean idleRoll = preferences == null || preferences.idleRoll();
         state.idleTime = idleRoll && still ? Math.min(IDLE_DELAY_SECONDS, state.idleTime + dt) : 0;
         boolean idle = state.idleTime >= IDLE_DELAY_SECONDS
                 && hullOverWater(chunks, position, headingX, headingZ);
-        boolean rockingWhileRowing = driverPlayer != null && motion.rowingPitch().get(driverPlayer.getUuid());
+        boolean rockingWhileRowing = preferences != null && preferences.rowingPitch();
         if (idle || driverPlayer == null) {
             state.rowingMotion.reset();
         }
@@ -440,7 +436,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             if (player == null) {
                 continue;
             }
-            boolean shouldRoll = idle && (!unoccupied || motion.idleRoll().get(player.getUuid()));
+            boolean shouldRoll = idle && (!unoccupied || playerSettings.get(player.getUuid()).idleRoll());
             if (shouldRoll == state.idleRollViewers.contains(viewer)) {
                 continue;
             }
@@ -651,7 +647,7 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             if (player == null) {
                 continue;
             }
-            int percent = volumes.get(player.getUuid());
+            int percent = playerSettings.get(player.getUuid()).volume();
             if (percent > 0) {
                 SoundUtil.playSoundEvent3dToPlayer(listener, sound, SoundCategory.SFX,
                         position.x, position.y, position.z, PADDLE_VOLUME * (percent / 100f), pitch, commands);
@@ -680,9 +676,9 @@ final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
             if (player == null) {
                 continue;
             }
-            int opacity = opacities.get(player.getUuid());
+            int opacity = playerSettings.get(player.getUuid()).opacity();
             if (opacity > 0) {
-                String effect = opacity == PlayerPercentages.DEFAULT ? particle : particle + "_" + opacity;
+                String effect = opacity == BoatPlayerSettings.MAX_PERCENT ? particle : particle + "_" + opacity;
                 ParticleUtil.spawnParticleEffect(effect, position.x, position.y, position.z,
                         yaw, 0, 0, scale, null, null, List.of(viewer), commands);
             }

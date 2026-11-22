@@ -16,10 +16,12 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
 
     @Override
     protected void setup() {
-        var volumes = loadPercentagePreference("paddle-volumes.properties");
-        var opacities = loadPercentagePreference("foam-opacities.properties");
-        var motion = new BoatMotionPreferences(loadMotionPreference("idle-roll.properties"),
-                loadMotionPreference("rowing-pitch.properties"), loadMotionPreference("show-oars.properties"));
+        var playerSettings = new BoatPlayerSettings(getDataDirectory());
+        try {
+            playerSettings.load();
+        } catch (IOException | IllegalArgumentException e) {
+            getLogger().at(Level.WARNING).withCause(e).log("Could not load all player boat settings");
+        }
         var physics = new BoatPhysicsSettings(getDataDirectory().resolve("boat-physics.properties"));
         try {
             physics.load();
@@ -29,40 +31,10 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
         var registry = getEntityStoreRegistry();
         var wakeState = registry.registerComponent(BoatWakeSystem.WakeState.class, BoatWakeSystem.WakeState::new);
         var inertia = registry.registerComponent(BoatInertiaSystem.Inertia.class, BoatInertiaSystem.Inertia::new);
-        registry.registerSystem(new BoatWakeSystem(wakeState, volumes, opacities, motion));
+        registry.registerSystem(new BoatWakeSystem(wakeState, playerSettings));
         registry.registerSystem(new BoatInertiaSystem(inertia, physics));
-        var interactionFile = getDataDirectory().resolve("land-interactions.properties");
-        var interactions = new PlayerPreferences<>(interactionFile, LandInteraction.PICK_UP,
-                LandInteraction::parseSaved, LandInteraction::argument);
-        try {
-            interactions.load(interactionFile);
-        } catch (IOException | IllegalArgumentException e) {
-            getLogger().at(Level.WARNING).withCause(e).log("Could not load player boat interactions");
-        }
-        getCommandRegistry().registerCommand(new BoatSettingsCommand(volumes, opacities, interactions, motion, physics));
-        registry.registerSystem(new BoatPickupSystem(interactions));
-    }
-
-    private PlayerPreferences<Boolean> loadMotionPreference(String fileName) {
-        var file = getDataDirectory().resolve(fileName);
-        var preference = new PlayerPreferences<>(file, true,
-                saved -> "false".equalsIgnoreCase(saved) ? Boolean.FALSE : null, String::valueOf);
-        try {
-            preference.load(file);
-        } catch (IOException | IllegalArgumentException e) {
-            getLogger().at(Level.WARNING).withCause(e).log("Could not load player preferences from %s", fileName);
-        }
-        return preference;
-    }
-
-    private PlayerPercentages loadPercentagePreference(String fileName) {
-        var preferences = new PlayerPercentages(getDataDirectory().resolve(fileName));
-        try {
-            preferences.load(getDataDirectory().resolveSibling("org.example_demo").resolve(fileName));
-        } catch (IOException | IllegalArgumentException e) {
-            getLogger().at(Level.WARNING).withCause(e).log("Could not load player preferences from %s", fileName);
-        }
-        return preferences;
+        getCommandRegistry().registerCommand(new BoatSettingsCommand(playerSettings, physics));
+        registry.registerSystem(new BoatPickupSystem(playerSettings));
     }
 
     @Override

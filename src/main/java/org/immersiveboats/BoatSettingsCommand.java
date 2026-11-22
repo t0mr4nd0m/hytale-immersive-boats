@@ -12,20 +12,12 @@ import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import javax.annotation.Nonnull;
 
 final class BoatSettingsCommand extends AbstractPlayerCommand {
-    private final PlayerPercentages volumes;
-    private final PlayerPercentages opacities;
-    private final PlayerPreferences<LandInteraction> interactions;
-    private final BoatMotionPreferences motion;
+    private final BoatPlayerSettings playerSettings;
     private final BoatPhysicsSettings physics;
 
-    BoatSettingsCommand(PlayerPercentages volumes, PlayerPercentages opacities,
-                        PlayerPreferences<LandInteraction> interactions, BoatMotionPreferences motion,
-                        BoatPhysicsSettings physics) {
+    BoatSettingsCommand(BoatPlayerSettings playerSettings, BoatPhysicsSettings physics) {
         super("boat_settings", "immersive_boats.settings.description");
-        this.volumes = volumes;
-        this.opacities = opacities;
-        this.interactions = interactions;
-        this.motion = motion;
+        this.playerSettings = playerSettings;
         this.physics = physics;
         requireNoPermission();
     }
@@ -36,7 +28,7 @@ final class BoatSettingsCommand extends AbstractPlayerCommand {
         var player = store.getComponent(ref, Player.getComponentType());
         if (player != null) {
             player.getPageManager().openCustomPage(ref, store,
-                    new BoatSettingsPage(playerRef, volumes, opacities, interactions, motion, physics));
+                    new BoatSettingsPage(playerRef, playerSettings, physics));
         }
     }
 }

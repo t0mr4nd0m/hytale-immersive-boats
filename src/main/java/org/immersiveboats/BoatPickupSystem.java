@@ -38,11 +38,11 @@ final class BoatPickupSystem extends EntityEventSystem<EntityStore, UseEntityEve
     // Match the draft used by Hytale's SpawnBoatInteraction. Water touching the keel still counts.
     private static final double BOAT_DRAFT = 0.09;
 
-    private final PlayerPreferences<LandInteraction> interactions;
+    private final BoatPlayerSettings playerSettings;
 
-    BoatPickupSystem(PlayerPreferences<LandInteraction> interactions) {
+    BoatPickupSystem(BoatPlayerSettings playerSettings) {
         super(UseEntityEvent.Pre.class);
-        this.interactions = interactions;
+        this.playerSettings = playerSettings;
     }
 
     @Override
@@ -61,7 +61,7 @@ final class BoatPickupSystem extends EntityEventSystem<EntityStore, UseEntityEve
         if (playerRef == null) {
             return;
         }
-        var interaction = interactions.get(playerRef.getUuid());
+        var interaction = playerSettings.get(playerRef.getUuid()).interaction();
         if (interaction == LandInteraction.BOARD) {
             return;
         }
