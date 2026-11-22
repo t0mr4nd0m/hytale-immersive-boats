@@ -1,6 +1,15 @@
 {
   "Parent": "Boat",
   "AnimationSets": {
+    "ImmersiveBoats_Boat_Oars_Rowing": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Oars_Rowing.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.25
+        }
+      ]
+    },
     "ImmersiveBoats_Boat_Paddle_Pitch_Slow": {
       "Animations": [
         {
@@ -34,6 +43,78 @@
           "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Paddle_Pitch_Fast.blockyanim",
           "Looping": true,
           "BlendingDuration": 0.4
+        }
+      ]
+    },
+    "ImmersiveBoats_Boat_Paddle_Pitch_Slow_Bank_Positive_Yaw": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Paddle_Pitch_Slow_Bank_Positive_Yaw.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.25
+        }
+      ]
+    },
+    "ImmersiveBoats_Boat_Paddle_Pitch_Bank_Positive_Yaw": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Paddle_Pitch_Bank_Positive_Yaw.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.25
+        }
+      ]
+    },
+    "ImmersiveBoats_Boat_Paddle_Pitch_Fast_Bank_Positive_Yaw": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Paddle_Pitch_Fast_Bank_Positive_Yaw.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.25
+        }
+      ]
+    },
+    "ImmersiveBoats_Boat_Turn_Bank_Positive_Yaw": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Turn_Bank_Positive_Yaw.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.25
+        }
+      ]
+    },
+    "ImmersiveBoats_Boat_Paddle_Pitch_Slow_Bank_Negative_Yaw": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Paddle_Pitch_Slow_Bank_Negative_Yaw.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.25
+        }
+      ]
+    },
+    "ImmersiveBoats_Boat_Paddle_Pitch_Bank_Negative_Yaw": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Paddle_Pitch_Bank_Negative_Yaw.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.25
+        }
+      ]
+    },
+    "ImmersiveBoats_Boat_Paddle_Pitch_Fast_Bank_Negative_Yaw": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Paddle_Pitch_Fast_Bank_Negative_Yaw.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.25
+        }
+      ]
+    },
+    "ImmersiveBoats_Boat_Turn_Bank_Negative_Yaw": {
+      "Animations": [
+        {
+          "Animation": "Items/Vehicles/Animations/ImmersiveBoats_Boat_Turn_Bank_Negative_Yaw.blockyanim",
+          "Looping": true,
+          "BlendingDuration": 0.25
         }
       ]
     }
