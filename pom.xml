@@ -69,6 +69,24 @@
                             </arguments>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>generate-rowing-phases</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>${java.home}/bin/java</executable>
+                            <classpathScope>compile</classpathScope>
+                            <arguments>
+                                <argument>--class-path</argument>
+                                <classpath/>
+                                <argument>${project.basedir}/build/GenerateRowingPhases.java</argument>
+                                <argument>${project.basedir}/src/main/resources</argument>
+                                <argument>${project.build.outputDirectory}</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>
