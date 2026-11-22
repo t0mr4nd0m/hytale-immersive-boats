@@ -33,6 +33,7 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
         var inertia = registry.registerComponent(BoatInertiaSystem.Inertia.class, BoatInertiaSystem.Inertia::new);
         registry.registerSystem(new BoatWakeSystem(wakeState, playerSettings));
         registry.registerSystem(new BoatInertiaSystem(inertia, physics));
+        registry.registerSystem(new BoatInertiaSystem.CaptureContactVelocity(inertia));
         getCommandRegistry().registerCommand(new BoatSettingsCommand(playerSettings, physics));
         registry.registerSystem(new BoatPickupSystem(playerSettings));
     }

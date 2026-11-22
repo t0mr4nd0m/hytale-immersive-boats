@@ -51,6 +51,7 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
     private static final double MAX_SPEED = 12.0;
     private static final double MAX_STEP = 0.10;
     private static final double IMPACT_TRANSFER = 0.80;
+    private static final double CLOSING_SPEED_EPSILON = 1e-6;
     private static final double IMPACT_TURN = 0.65;
     // A piloted boat may stop a little short of the hull on the client.
     private static final double PILOT_CONTACT_MARGIN = 0.16;
@@ -276,10 +277,11 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
         var obstacles = nearby(commands, boat, position, false);
         var result = new CollisionResult();
         var probe = new Vector3d();
+        var glideVelocity = new Vector3d(state.velocity).fma(impulse, direction);
         for (int step = 1; step <= 4; step++) {
             position.fma(step * MAX_STEP, direction, probe);
             if (!navigable(world, probe, hull) || blockedByLand(world, boxes, position, boxes, probe, result)
-                    || contact(world, commands, obstacles, hull, probe, direction, 0, false)) {
+                    || contact(world, commands, obstacles, hull, probe, glideVelocity, 0, false)) {
                 return;
             }
         }
@@ -305,16 +307,9 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
                              BoatHull hull, BoatHull collisionHull, Vector3d previous, Vector3d position, double dt) {
         var travel = position.sub(previous, new Vector3d());
         double distance = Math.hypot(travel.x, travel.z);
-        if (distance > 1.5 || Math.abs(travel.y) > 0.5) {
-            state.velocity.zero();
+        if (!samplePilotVelocity(travel, distance, dt, state.velocity)) {
             return;
         }
-        if (distance < 0.001) {
-            // Input packets and server ticks need not arrive at the same cadence.
-            state.velocity.mul(Math.exp(-8 * dt));
-            return;
-        }
-        state.velocity.set(travel.x, 0, travel.z).mul(Math.min(1 / dt, MAX_SPEED / distance));
         var contacts = nearby(commands, boat, position, true);
         int steps = (int) Math.ceil(distance / MAX_STEP);
         var candidate = new Vector3d();
@@ -328,6 +323,20 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
                 return;
             }
         }
+    }
+
+    private static boolean samplePilotVelocity(Vector3d travel, double distance, double dt, Vector3d velocity) {
+        if (distance > 1.5 || Math.abs(travel.y) > 0.5) {
+            velocity.zero();
+            return false;
+        }
+        if (distance < 0.001) {
+            // Input packets and server ticks need not arrive at the same cadence.
+            velocity.mul(Math.exp(-8 * dt));
+            return false;
+        }
+        velocity.set(travel.x, 0, travel.z).mul(Math.min(1 / dt, MAX_SPEED / distance));
+        return true;
     }
 
     private void drift(World world, CommandBuffer<EntityStore> commands, Inertia state, BoatHull hull, Box bounds,
@@ -479,26 +488,30 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
                             boolean useCollisionBounds) {
         var center = hull.center(candidate);
         var normal = new Vector3d();
+        var relativeVelocity = new Vector3d();
+        var physics = settings.state();
         for (var other : contacts) {
             if (other.item) {
                 continue;
             }
             var otherHull = useCollisionBounds ? other.collisionHull : other.hull;
             var delta = otherHull.center(other.position).sub(center);
-            if (hull.contactDepth(candidate, otherHull, other.position, delta, velocity, normal) < -margin) {
+            var target = other.boat ? commands.getComponent(other.ref, inertia) : null;
+            boolean hasTargetVelocity = target != null && target.physics == physics;
+            relativeVelocity.set(velocity);
+            if (hasTargetVelocity) {
+                relativeVelocity.sub(target.contactVelocity);
+            }
+            if (hull.contactDepth(candidate, otherHull, other.position, delta, relativeVelocity, normal) < -margin) {
                 continue;
             }
-            double closingSpeed = velocity.dot(normal);
-            if (closingSpeed <= 0) {
+            double closingSpeed = relativeVelocity.dot(normal);
+            if (closingSpeed <= CLOSING_SPEED_EPSILON) {
                 continue;
             }
-            if (transfer && other.boat && navigable(world, other.position, other.hull)) {
-                var target = commands.getComponent(other.ref, inertia);
-                if (target != null && target.physics == settings.state()) {
-                    double targetSpeed = target.velocity.dot(normal);
-                    double impulse = IMPACT_TRANSFER * Math.max(0, closingSpeed - targetSpeed);
-                    applyImpact(commands, other.ref, target, normal, impulse, hull.impactLever(otherHull, delta, normal));
-                }
+            if (transfer && hasTargetVelocity && navigable(world, other.position, other.hull)) {
+                double impulse = IMPACT_TRANSFER * closingSpeed;
+                applyImpact(commands, other.ref, target, normal, impulse, hull.impactLever(otherHull, delta, normal));
             }
             return true;
         }
@@ -619,9 +632,48 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
                             Vector3d position) {
     }
 
+    static final class CaptureContactVelocity extends EntityTickingSystem<EntityStore> {
+        private final ComponentType<EntityStore, Inertia> inertia;
+        private final Query<EntityStore> query;
+
+        CaptureContactVelocity(ComponentType<EntityStore, Inertia> inertia) {
+            this.inertia = inertia;
+            query = Query.and(BoatComponent.getComponentType(), TransformComponent.getComponentType(), inertia);
+        }
+
+        @Override
+        public Query<EntityStore> getQuery() {
+            return query;
+        }
+
+        @Override
+        @Nonnull
+        public Set<Dependency<EntityStore>> getDependencies() {
+            return Set.of(new SystemDependency<>(Order.AFTER, MountSystems.HandleMountInput.class),
+                    new SystemDependency<>(Order.BEFORE, BoatInertiaSystem.class));
+        }
+
+        @Override
+        public void tick(float dt, int index, @Nonnull ArchetypeChunk<EntityStore> chunk,
+                         @Nonnull Store<EntityStore> store, @Nonnull CommandBuffer<EntityStore> commands) {
+            var state = chunk.getComponent(index, inertia);
+            var transform = chunk.getComponent(index, TransformComponent.getComponentType());
+            if (dt <= 0 || state == null || transform == null) {
+                return;
+            }
+            // All contacts see the target's velocity before drag or impacts from this tick.
+            state.contactVelocity.set(state.velocity);
+            if (state.pilot != null) {
+                var travel = transform.getPosition().sub(state.previous, new Vector3d());
+                samplePilotVelocity(travel, Math.hypot(travel.x, travel.z), dt, state.contactVelocity);
+            }
+        }
+    }
+
     static final class Inertia implements Component<EntityStore> {
         private final Vector3d previous = new Vector3d();
         private final Vector3d velocity = new Vector3d();
+        private final Vector3d contactVelocity = new Vector3d();
         private final Vector3d releaseVelocity = new Vector3d();
         private Ref<EntityStore> pilot;
         private boolean wasRowing;
