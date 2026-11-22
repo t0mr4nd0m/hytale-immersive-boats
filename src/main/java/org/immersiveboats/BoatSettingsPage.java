@@ -56,6 +56,7 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
         commands.set("#InteractionLabel.Text", Message.translation(TRANSLATIONS + "interaction"));
         commands.set("#IdleRollLabel.Text", Message.translation(TRANSLATIONS + "idleRoll"));
         commands.set("#RowingPitchLabel.Text", Message.translation(TRANSLATIONS + "rowingPitch"));
+        commands.set("#ShowOarsLabel.Text", Message.translation(TRANSLATIONS + "showOars"));
         initialPhysics = physics.state().enabled();
         editingPhysics = canEditPhysics(player);
         commands.set("#PhysicsLabel.Text", Message.translation(TRANSLATIONS + "physics"));
@@ -70,6 +71,7 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
         commands.set("#Opacity.Value", opacities.get(player));
         commands.set("#IdleRoll.Value", motion.idleRoll().get(player));
         commands.set("#RowingPitch.Value", motion.rowingPitch().get(player));
+        commands.set("#ShowOars.Value", motion.showOars().get(player));
         commands.set("#Mode.Entries", Arrays.stream(LandInteraction.values())
                 .map(mode -> new DropdownEntryInfo(
                         LocalizableString.fromMessageId(TRANSLATIONS + "mode." + mode.argument()), mode.argument()))
@@ -81,7 +83,8 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
                 .append("@Opacity", "#Opacity.Value")
                 .append("@Mode", "#Mode.Value")
                 .append("@IdleRoll", "#IdleRoll.Value")
-                .append("@RowingPitch", "#RowingPitch.Value");
+                .append("@RowingPitch", "#RowingPitch.Value")
+                .append("@ShowOars", "#ShowOars.Value");
         if (editingPhysics) {
             apply.append("@EnhancedPhysics", "#EnhancedPhysics.Value");
         }
@@ -113,7 +116,8 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
         if (mode == null) {
             return "invalidMode";
         }
-        if (input.idleRoll == null || input.rowingPitch == null || (editingPhysics && input.enhancedPhysics == null)) {
+        if (input.idleRoll == null || input.rowingPitch == null || input.showOars == null
+                || (editingPhysics && input.enhancedPhysics == null)) {
             return "invalidAction";
         }
 
@@ -128,6 +132,7 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
             interactions.set(player, mode);
             motion.idleRoll().set(player, input.idleRoll);
             motion.rowingPitch().set(player, input.rowingPitch);
+            motion.showOars().set(player, input.showOars);
             if (changePhysics) {
                 physics.setEnabled(input.enhancedPhysics);
             }
@@ -159,6 +164,8 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
                         data -> data.idleRoll).add()
                 .append(new KeyedCodec<>("@RowingPitch", Codec.BOOLEAN), (data, value) -> data.rowingPitch = value,
                         data -> data.rowingPitch).add()
+                .append(new KeyedCodec<>("@ShowOars", Codec.BOOLEAN), (data, value) -> data.showOars = value,
+                        data -> data.showOars).add()
                 .append(new KeyedCodec<>("@EnhancedPhysics", Codec.BOOLEAN),
                         (data, value) -> data.enhancedPhysics = value, data -> data.enhancedPhysics).add()
                 .build();
@@ -169,6 +176,7 @@ final class BoatSettingsPage extends InteractiveCustomUIPage<BoatSettingsPage.In
         private String mode;
         private Boolean idleRoll;
         private Boolean rowingPitch;
+        private Boolean showOars;
         private Boolean enhancedPhysics;
     }
 }

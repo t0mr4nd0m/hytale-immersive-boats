@@ -19,7 +19,7 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
         var volumes = loadPercentagePreference("paddle-volumes.properties");
         var opacities = loadPercentagePreference("foam-opacities.properties");
         var motion = new BoatMotionPreferences(loadMotionPreference("idle-roll.properties"),
-                loadMotionPreference("rowing-pitch.properties"));
+                loadMotionPreference("rowing-pitch.properties"), loadMotionPreference("show-oars.properties"));
         var physics = new BoatPhysicsSettings(getDataDirectory().resolve("boat-physics.properties"));
         try {
             physics.load();

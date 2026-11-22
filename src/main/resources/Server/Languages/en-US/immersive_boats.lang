@@ -5,6 +5,7 @@ settings.opacity = Foam opacity (0–100%)
 settings.interaction = Interaction ashore
 settings.idleRoll = Rocking at rest
 settings.rowingPitch = Rocking while rowing
+settings.showOars = Show oars and rowing effects
 settings.physics = Enhanced physics (server)
 settings.enabled = Enabled
 settings.disabled = Disabled

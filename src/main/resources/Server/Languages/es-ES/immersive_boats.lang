@@ -5,6 +5,7 @@ settings.opacity = Opacidad de espuma (0–100 %)
 settings.interaction = Interacción en tierra
 settings.idleRoll = Balanceo en reposo
 settings.rowingPitch = Cabeceo al navegar
+settings.showOars = Mostrar remos y efectos de remada
 settings.physics = Físicas mejoradas (servidor)
 settings.enabled = Activadas
 settings.disabled = Desactivadas

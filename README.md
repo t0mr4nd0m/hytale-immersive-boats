@@ -1,11 +1,12 @@
 # Immersive Boats
 
-Immersive Boats makes Hytale's boats feel more realistic with foam wakes, water sounds, and improved physics.
+Immersive Boats makes Hytale's boats feel more realistic with animated oars, foam wakes, water sounds, improved physics, and better interactions (Stop beating your boats to pick them up!).
 
-## Effects on the water
+## Water effects
 
 - Foam wakes and soft splashes as boats move, even without a pilot.
-- Gentle pitching while rowing and side-to-side rocking at rest.
+- Two animated oars, with realistic animations and water effects, appear when a player takes the helm.
+- Gentle pitching while rowing, a slight lean into turns, and side-to-side rocking at rest.
 
 ## Boat interactions
 
@@ -20,7 +21,10 @@ Immersive Boats makes Hytale's boats feel more realistic with foam wakes, water 
 
 ## Configuration
 
-Run `/boat_settings` in game to adjust rowing volume, foam opacity, how you interact with boats ashore, and whether boats rock at rest or pitch while rowing. **Apply** saves your changes and closes the menu. **Cancel** closes the menu and discards pending edits.
+Run `/boat_settings` in game to adjust rowing volume, foam opacity, how you interact with boats ashore, visibility of animated oars and whether boats rock at rest or pitch while rowing. 
+
+**Apply** saves your changes and closes the menu.
+**Cancel** closes the menu and discards pending edits.
 
 Enhanced physics is enabled by default. Server operators and players with the `immersiveboats.settings.physics` permission can toggle it for everyone from the same menu.
 

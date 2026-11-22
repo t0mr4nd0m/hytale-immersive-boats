@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "duration": 72,
+  "holdLastKeyframe": false,
+  "nodeAnimations": {
+    "Port_Oar": {
+      "position": [],
+      "orientation": [
+        { "time": 0, "delta": { "x": 0, "y": 0, "z": 0, "w": 1 }, "interpolationType": "smooth" },
+        { "time": 10, "delta": { "x": 0.056323, "y": 0.243963, "z": -0.117988, "w": 0.960931 }, "interpolationType": "smooth" },
+        { "time": 18, "delta": { "x": 0.093794, "y": 0.232148, "z": 0.033788, "w": 0.967558 }, "interpolationType": "smooth" },
+        { "time": 42, "delta": { "x": -0.08108, "y": -0.200679, "z": 0.034072, "w": 0.975701 }, "interpolationType": "smooth" },
+        { "time": 52, "delta": { "x": -0.046846, "y": -0.211309, "z": -0.127432, "w": 0.967944 }, "interpolationType": "smooth" },
+        { "time": 64, "delta": { "x": -0.003926, "y": -0.017005, "z": -0.121851, "w": 0.992395 }, "interpolationType": "smooth" },
+        { "time": 72, "delta": { "x": 0, "y": 0, "z": 0, "w": 1 }, "interpolationType": "smooth" }
+      ],
+      "shapeStretch": [],
+      "shapeVisible": [],
+      "shapeUvOffset": []
+    }
+  }
+}

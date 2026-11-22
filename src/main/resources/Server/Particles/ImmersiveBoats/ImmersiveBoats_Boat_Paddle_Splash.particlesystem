@@ -2,7 +2,12 @@
   "Spawners": [
     {
       "SpawnerId": "ImmersiveBoats_Boat_Foam",
-      "StartDelay": 0.1
-    }
+      "FixedRotation": true,
+      "EmitOffset": {
+        "X": { "Min": 0, "Max": 0 },
+        "Z": { "Min": 0, "Max": 0 }
+      }
+    },
+    { "SpawnerId": "ImmersiveBoats_Boat_Paddle_Droplets" }
   ]
 }

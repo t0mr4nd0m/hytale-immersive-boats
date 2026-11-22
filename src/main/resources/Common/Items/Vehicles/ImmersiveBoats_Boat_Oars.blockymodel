@@ -1,0 +1,245 @@
+{
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Base",
+      "position": {"x": 0, "y": 0, "z": 1.75},
+      "orientation": {"x": 0, "y": 0, "z": 0, "w": 1},
+      "shape": {
+        "type": "none",
+        "offset": {"x": 0, "y": 0, "z": 0},
+        "stretch": {"x": 1, "y": 1, "z": 1},
+        "settings": {
+          "isPiece": false
+        },
+        "textureLayout": {},
+        "unwrapMode": "custom",
+        "visible": true,
+        "doubleSided": false,
+        "shadingMode": "flat"
+      },
+      "children": [
+        {
+          "id": "2",
+          "name": "Port_Oar",
+          "position": {"x": -17, "y": 13, "z": -5},
+          "orientation": {"x": -0.018151, "y": -0.10294, "z": 0.172697, "w": 0.979413},
+          "shape": {
+            "type": "box",
+            "offset": {"x": -3.5, "y": 0, "z": 0},
+            "stretch": {"x": 1, "y": 1, "z": 1},
+            "settings": {
+              "isPiece": false,
+              "size": {"x": 39, "y": 2, "z": 2}
+            },
+            "textureLayout": {
+              "back": {"offset": {"x": 0, "y": 0}, "mirror": {"x": false, "y": false}, "angle": 0},
+              "right": {"offset": {"x": 0, "y": 12}, "mirror": {"x": false, "y": false}, "angle": 0},
+              "front": {"offset": {"x": 0, "y": 0}, "mirror": {"x": false, "y": false}, "angle": 0},
+              "left": {"offset": {"x": 0, "y": 12}, "mirror": {"x": false, "y": false}, "angle": 0},
+              "top": {"offset": {"x": 0, "y": 0}, "mirror": {"x": false, "y": false}, "angle": 0},
+              "bottom": {"offset": {"x": 0, "y": 12}, "mirror": {"x": false, "y": false}, "angle": 0}
+            },
+            "unwrapMode": "custom",
+            "visible": true,
+            "doubleSided": false,
+            "shadingMode": "flat"
+          },
+          "children": [
+            {
+              "id": "4",
+              "name": "Port_Oar_Grip",
+              "position": {"x": 14.5, "y": 0, "z": 0},
+              "orientation": {"x": 0, "y": 0, "z": 0, "w": 1},
+              "shape": {
+                "type": "box",
+                "offset": {"x": 0, "y": 0, "z": 0},
+                "stretch": {"x": 1, "y": 1, "z": 1},
+                "settings": {
+                  "isPiece": false,
+                  "size": {"x": 6, "y": 3, "z": 3}
+                },
+                "textureLayout": {
+                  "back": {"offset": {"x": 0, "y": 24}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "right": {"offset": {"x": 0, "y": 36}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "front": {"offset": {"x": 0, "y": 24}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "left": {"offset": {"x": 0, "y": 36}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "top": {"offset": {"x": 0, "y": 24}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "bottom": {"offset": {"x": 0, "y": 36}, "mirror": {"x": false, "y": false}, "angle": 0}
+                },
+                "unwrapMode": "custom",
+                "visible": true,
+                "doubleSided": false,
+                "shadingMode": "flat"
+              }
+            },
+            {
+              "id": "5",
+              "name": "Port_Oar_Blade",
+              "position": {"x": -28, "y": 0, "z": 0},
+              "orientation": {"x": 0, "y": 0, "z": 0, "w": 1},
+              "shape": {
+                "type": "box",
+                "offset": {"x": 0, "y": 0, "z": 0},
+                "stretch": {"x": 1, "y": 1, "z": 1},
+                "settings": {
+                  "isPiece": false,
+                  "size": {"x": 16, "y": 2, "z": 12}
+                },
+                "textureLayout": {
+                  "back": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "right": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "front": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "left": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "top": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "bottom": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0}
+                },
+                "unwrapMode": "custom",
+                "visible": true,
+                "doubleSided": false,
+                "shadingMode": "flat"
+              }
+            },
+            {
+              "id": "6",
+              "name": "Port_Oar_Tip",
+              "position": {"x": -37.5, "y": 0, "z": 0},
+              "orientation": {"x": 0, "y": 0, "z": 0, "w": 1},
+              "shape": {
+                "type": "box",
+                "offset": {"x": 0, "y": 0, "z": 0},
+                "stretch": {"x": 1, "y": 1, "z": 1},
+                "settings": {
+                  "isPiece": false,
+                  "size": {"x": 3, "y": 2, "z": 8}
+                },
+                "textureLayout": {
+                  "back": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "right": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "front": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "left": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "top": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "bottom": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0}
+                },
+                "unwrapMode": "custom",
+                "visible": true,
+                "doubleSided": false,
+                "shadingMode": "flat"
+              }
+            }
+          ]
+        },
+        {
+          "id": "7",
+          "name": "Starboard_Oar",
+          "position": {"x": 17, "y": 13, "z": -5},
+          "orientation": {"x": -0.018151, "y": 0.10294, "z": -0.172697, "w": 0.979413},
+          "shape": {
+            "type": "box",
+            "offset": {"x": 3.5, "y": 0, "z": 0},
+            "stretch": {"x": 1, "y": 1, "z": 1},
+            "settings": {
+              "isPiece": false,
+              "size": {"x": 39, "y": 2, "z": 2}
+            },
+            "textureLayout": {
+              "back": {"offset": {"x": 0, "y": 0}, "mirror": {"x": false, "y": false}, "angle": 0},
+              "right": {"offset": {"x": 0, "y": 12}, "mirror": {"x": false, "y": false}, "angle": 0},
+              "front": {"offset": {"x": 0, "y": 0}, "mirror": {"x": false, "y": false}, "angle": 0},
+              "left": {"offset": {"x": 0, "y": 12}, "mirror": {"x": false, "y": false}, "angle": 0},
+              "top": {"offset": {"x": 0, "y": 0}, "mirror": {"x": false, "y": false}, "angle": 0},
+              "bottom": {"offset": {"x": 0, "y": 12}, "mirror": {"x": false, "y": false}, "angle": 0}
+            },
+            "unwrapMode": "custom",
+            "visible": true,
+            "doubleSided": false,
+            "shadingMode": "flat"
+          },
+          "children": [
+            {
+              "id": "9",
+              "name": "Starboard_Oar_Grip",
+              "position": {"x": -14.5, "y": 0, "z": 0},
+              "orientation": {"x": 0, "y": 0, "z": 0, "w": 1},
+              "shape": {
+                "type": "box",
+                "offset": {"x": 0, "y": 0, "z": 0},
+                "stretch": {"x": 1, "y": 1, "z": 1},
+                "settings": {
+                  "isPiece": false,
+                  "size": {"x": 6, "y": 3, "z": 3}
+                },
+                "textureLayout": {
+                  "back": {"offset": {"x": 0, "y": 24}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "right": {"offset": {"x": 0, "y": 36}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "front": {"offset": {"x": 0, "y": 24}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "left": {"offset": {"x": 0, "y": 36}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "top": {"offset": {"x": 0, "y": 24}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "bottom": {"offset": {"x": 0, "y": 36}, "mirror": {"x": false, "y": false}, "angle": 0}
+                },
+                "unwrapMode": "custom",
+                "visible": true,
+                "doubleSided": false,
+                "shadingMode": "flat"
+              }
+            },
+            {
+              "id": "10",
+              "name": "Starboard_Oar_Blade",
+              "position": {"x": 28, "y": 0, "z": 0},
+              "orientation": {"x": 0, "y": 0, "z": 0, "w": 1},
+              "shape": {
+                "type": "box",
+                "offset": {"x": 0, "y": 0, "z": 0},
+                "stretch": {"x": 1, "y": 1, "z": 1},
+                "settings": {
+                  "isPiece": false,
+                  "size": {"x": 16, "y": 2, "z": 12}
+                },
+                "textureLayout": {
+                  "back": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "right": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "front": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "left": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "top": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "bottom": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0}
+                },
+                "unwrapMode": "custom",
+                "visible": true,
+                "doubleSided": false,
+                "shadingMode": "flat"
+              }
+            },
+            {
+              "id": "11",
+              "name": "Starboard_Oar_Tip",
+              "position": {"x": 37.5, "y": 0, "z": 0},
+              "orientation": {"x": 0, "y": 0, "z": 0, "w": 1},
+              "shape": {
+                "type": "box",
+                "offset": {"x": 0, "y": 0, "z": 0},
+                "stretch": {"x": 1, "y": 1, "z": 1},
+                "settings": {
+                  "isPiece": false,
+                  "size": {"x": 3, "y": 2, "z": 8}
+                },
+                "textureLayout": {
+                  "back": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "right": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "front": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "left": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "top": {"offset": {"x": 0, "y": 48}, "mirror": {"x": false, "y": false}, "angle": 0},
+                  "bottom": {"offset": {"x": 0, "y": 60}, "mirror": {"x": false, "y": false}, "angle": 0}
+                },
+                "unwrapMode": "custom",
+                "visible": true,
+                "doubleSided": false,
+                "shadingMode": "flat"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
