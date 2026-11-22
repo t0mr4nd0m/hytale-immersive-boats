@@ -23,8 +23,4 @@ enum LandInteraction {
         }
         return null;
     }
-
-    static LandInteraction parseSaved(String argument) {
-        return "pick up".equalsIgnoreCase(argument) ? PICK_UP : parse(argument);
-    }
 }

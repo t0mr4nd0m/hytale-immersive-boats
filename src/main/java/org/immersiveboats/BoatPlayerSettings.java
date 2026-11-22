@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -26,13 +25,10 @@ final class BoatPlayerSettings {
     private static final String SHOW_OARS = "show-oars";
     private static final String SUFFIX = ".properties";
 
-    private final Path dataDirectory;
     private final Path playersDirectory;
     private final Map<UUID, Values> values = new ConcurrentHashMap<>();
-    private boolean legacyLoaded;
 
     BoatPlayerSettings(Path dataDirectory) {
-        this.dataDirectory = dataDirectory;
         playersDirectory = dataDirectory.resolve("players");
     }
 
@@ -53,29 +49,6 @@ final class BoatPlayerSettings {
                 }
             }
         }
-
-        var legacy = new HashMap<UUID, Properties>();
-        var demoDirectory = dataDirectory.resolveSibling("org.example_demo");
-        readLegacy(legacy, VOLUME, "paddle-volumes.properties", demoDirectory);
-        readLegacy(legacy, OPACITY, "foam-opacities.properties", demoDirectory);
-        readLegacy(legacy, LAND_INTERACTION, "land-interactions.properties", dataDirectory);
-        readLegacy(legacy, IDLE_ROLL, "idle-roll.properties", dataDirectory);
-        readLegacy(legacy, ROWING_PITCH, "rowing-pitch.properties", dataDirectory);
-        readLegacy(legacy, SHOW_OARS, "show-oars.properties", dataDirectory);
-        legacyLoaded = true;
-        for (var entry : legacy.entrySet()) {
-            var player = entry.getKey();
-            if (!Files.notExists(file(player))) {
-                continue;
-            }
-            var migrated = decode(entry.getValue());
-            values.put(player, migrated);
-            try {
-                write(file(player), migrated);
-            } catch (IOException e) {
-                LOGGER.at(Level.WARNING).withCause(e).log("Could not migrate boat preferences for %s", player);
-            }
-        }
     }
 
     Values get(UUID player) {
@@ -84,7 +57,7 @@ final class BoatPlayerSettings {
 
     synchronized void save(UUID player, Values updated) throws IOException {
         var file = file(player);
-        if (!values.containsKey(player) && (!legacyLoaded || !Files.notExists(file))) {
+        if (!values.containsKey(player) && !Files.notExists(file)) {
             throw new IOException("Could not safely replace unread boat preferences for " + player);
         }
         if (updated.equals(get(player)) && Files.isRegularFile(file)) {
@@ -96,23 +69,6 @@ final class BoatPlayerSettings {
 
     private Path file(UUID player) {
         return playersDirectory.resolve(player + SUFFIX);
-    }
-
-    private void readLegacy(Map<UUID, Properties> legacy, String key, String name, Path fallback) throws IOException {
-        var source = dataDirectory.resolve(name);
-        if (Files.notExists(source)) {
-            source = fallback.resolve(name);
-        }
-        if (Files.notExists(source)) {
-            return;
-        }
-        var properties = read(source);
-        for (String uuid : properties.stringPropertyNames()) {
-            var player = parseUuid(uuid);
-            if (player != null) {
-                legacy.computeIfAbsent(player, ignored -> new Properties()).setProperty(key, properties.getProperty(uuid));
-            }
-        }
     }
 
     private static UUID parseUuid(String value) {
@@ -133,7 +89,7 @@ final class BoatPlayerSettings {
     }
 
     private static Values decode(Properties properties) {
-        var interaction = LandInteraction.parseSaved(properties.getProperty(LAND_INTERACTION));
+        var interaction = LandInteraction.parse(properties.getProperty(LAND_INTERACTION));
         return new Values(percent(properties.getProperty(VOLUME)), percent(properties.getProperty(OPACITY)),
                 interaction == null ? DEFAULTS.interaction() : interaction,
                 enabled(properties, IDLE_ROLL), enabled(properties, ROWING_PITCH), enabled(properties, SHOW_OARS));

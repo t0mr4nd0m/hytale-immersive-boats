@@ -22,7 +22,7 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
         } catch (IOException | IllegalArgumentException e) {
             getLogger().at(Level.WARNING).withCause(e).log("Could not load all player boat settings");
         }
-        var physics = new BoatPhysicsSettings(getDataDirectory().resolve("boat-physics.properties"));
+        var physics = new BoatPhysicsSettings(getDataDirectory().resolve("server.properties"));
         try {
             physics.load();
         } catch (IOException | IllegalArgumentException e) {
