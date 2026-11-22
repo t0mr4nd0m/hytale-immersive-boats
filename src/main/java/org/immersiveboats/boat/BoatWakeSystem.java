@@ -54,13 +54,13 @@ public final class BoatWakeSystem extends DelayedEntitySystem<EntityStore> {
     private static final double MODEL_UNITS_PER_BLOCK = 32;
     private static final double OAR_SPLASH_DISTANCE_FACTOR = 0.5;
     private static final double OAR_PIVOT_X = 17;
-    private static final double OAR_PIVOT_Y = 13;
-    private static final double OAR_PIVOT_Z = -5;
+    private static final double OAR_PIVOT_Y = 16;
+    private static final double OAR_PIVOT_Z = -7;
     private static final double OAR_SHAFT_OFFSET = 3.5;
     private static final double OAR_BLADE_START = OAR_SHAFT_OFFSET + 20;
     private static final double OAR_BLADE_END = OAR_SHAFT_OFFSET + 39;
     private static final double MODEL_BASE_Z = 1.75;
-    private static final double OAR_CATCH_DIP = Math.toRadians(24);
+    private static final double OAR_CATCH_DIP = Math.toRadians(28.51);
     private static final double MIN_PADDLE_INTERVAL = 0.72;
     private static final double MAX_PADDLE_INTERVAL = 0.98;
     private static final double MIN_PADDLE_PITCH = 0.96;

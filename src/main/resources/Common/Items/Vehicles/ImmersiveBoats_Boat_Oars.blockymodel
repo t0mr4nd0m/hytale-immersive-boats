@@ -22,15 +22,15 @@
         {
           "id": "2",
           "name": "Port_Oar",
-          "position": {"x": -17, "y": 13, "z": -5},
-          "orientation": {"x": -0.018151, "y": -0.10294, "z": 0.172697, "w": 0.979413},
+          "position": {"x": -17, "y": 16, "z": -7},
+          "orientation": {"x": -0.022188, "y": -0.102146, "z": 0.211107, "w": 0.971858},
           "shape": {
             "type": "box",
             "offset": {"x": -3.5, "y": 0, "z": 0},
             "stretch": {"x": 1, "y": 1, "z": 1},
             "settings": {
               "isPiece": false,
-              "size": {"x": 39, "y": 2, "z": 2}
+              "size": {"x": 40, "y": 2, "z": 2}
             },
             "textureLayout": {
               "back": {"offset": {"x": 0, "y": 0}, "mirror": {"x": false, "y": false}, "angle": 0},
@@ -132,15 +132,15 @@
         {
           "id": "7",
           "name": "Starboard_Oar",
-          "position": {"x": 17, "y": 13, "z": -5},
-          "orientation": {"x": -0.018151, "y": 0.10294, "z": -0.172697, "w": 0.979413},
+          "position": {"x": 17, "y": 16, "z": -7},
+          "orientation": {"x": -0.022188, "y": 0.102146, "z": -0.211107, "w": 0.971858},
           "shape": {
             "type": "box",
             "offset": {"x": 3.5, "y": 0, "z": 0},
             "stretch": {"x": 1, "y": 1, "z": 1},
             "settings": {
               "isPiece": false,
-              "size": {"x": 39, "y": 2, "z": 2}
+              "size": {"x": 40, "y": 2, "z": 2}
             },
             "textureLayout": {
               "back": {"offset": {"x": 0, "y": 0}, "mirror": {"x": false, "y": false}, "angle": 0},
