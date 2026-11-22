@@ -157,21 +157,20 @@ public final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
             state.wasRowing = false;
             state.releaseRemaining = 0;
             state.entityPositions.clear();
-        } else {
+        } else if (pilot != null) {
             var contacts = nearby(commands, boat, position, false);
-            if (pilot != null) {
-                var lastVelocity = new Vector3d(state.velocity);
-                var collisionHull = BoatHull.of(boundingBox.getBoundingBox(), 0);
-                samplePilot(world, commands, boat, state, hull, collisionHull, state.previous, position, dt);
-                receiveEntityPush(commands, boat, state, hull, position, contacts, dt);
-                updatePilotGlide(world, commands, boat, pilot, state, hull, position, lastVelocity, dt);
-            } else if (position.distanceSquared(state.previous) <= 0.25) {
-                receiveEntityPush(commands, boat, state, hull, position, contacts, dt);
-                drift(world, commands, state, hull, bounds, transform, contacts, Math.min(dt, 0.25));
-            } else {
-                state.stop();
-                state.entityPositions.clear();
-            }
+            var lastVelocity = new Vector3d(state.velocity);
+            var collisionHull = BoatHull.of(boundingBox.getBoundingBox(), 0);
+            samplePilot(world, commands, boat, state, hull, collisionHull, state.previous, position, dt);
+            receiveEntityPush(commands, boat, state, hull, position, contacts, dt);
+            updatePilotGlide(world, commands, boat, pilot, state, hull, position, contacts, lastVelocity, dt);
+        } else if (position.distanceSquared(state.previous) <= 0.25) {
+            var contacts = nearby(commands, boat, position, false);
+            receiveEntityPush(commands, boat, state, hull, position, contacts, dt);
+            drift(world, commands, state, hull, bounds, transform, contacts, Math.min(dt, 0.25));
+        } else {
+            state.stop();
+            state.entityPositions.clear();
         }
         state.previous.set(position);
     }
@@ -233,7 +232,7 @@ public final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
 
     private void updatePilotGlide(World world, CommandBuffer<EntityStore> commands, Ref<EntityStore> boat,
                                   Ref<EntityStore> pilot, Inertia state, BoatHull hull, Vector3d position,
-                                  Vector3d lastVelocity, double dt) {
+                                  ArrayList<Obstacle> contacts, Vector3d lastVelocity, double dt) {
         state.glideRearm = Math.max(0, state.glideRearm - dt);
         var movement = commands.getComponent(boat, MovementStatesComponent.getComponentType());
         var states = movement == null ? null : movement.getMovementStates();
@@ -276,14 +275,13 @@ public final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
             return;
         }
         var boxes = hull.blockBoxes();
-        var obstacles = nearby(commands, boat, position, false);
         var result = new CollisionResult();
         var probe = new Vector3d();
         var glideVelocity = new Vector3d(state.velocity).fma(impulse, direction);
         for (int step = 1; step <= 4; step++) {
             position.fma(step * MAX_STEP, direction, probe);
             if (!navigable(world, probe, hull) || blockedByLand(world, boxes, position, boxes, probe, result)
-                    || contact(world, commands, obstacles, hull, probe, glideVelocity, 0, false)) {
+                    || contact(world, commands, contacts, hull, probe, glideVelocity, 0, false)) {
                 return;
             }
         }
