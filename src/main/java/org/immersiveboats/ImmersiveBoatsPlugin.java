@@ -16,8 +16,8 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
 
     @Override
     protected void setup() {
-        var volumes = registerPreference("rowing_volume", "volume", "paddle-volumes.properties");
-        var opacities = registerPreference("rowing_opacity", "opacity", "foam-opacities.properties");
+        var volumes = loadPercentagePreference("paddle-volumes.properties");
+        var opacities = loadPercentagePreference("foam-opacities.properties");
         var motion = new BoatMotionPreferences(loadMotionPreference("idle-roll.properties"),
                 loadMotionPreference("rowing-pitch.properties"));
         var registry = getEntityStoreRegistry();
@@ -31,7 +31,6 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
         } catch (IOException | IllegalArgumentException e) {
             getLogger().at(Level.WARNING).withCause(e).log("Could not load player boat interactions");
         }
-        getCommandRegistry().registerCommand(new BoatModeCommand(interactions));
         getCommandRegistry().registerCommand(new BoatSettingsCommand(volumes, opacities, interactions, motion));
         registry.registerSystem(new BoatPickupSystem(interactions));
     }
@@ -48,15 +47,13 @@ public class ImmersiveBoatsPlugin extends JavaPlugin {
         return preference;
     }
 
-    private PlayerPercentages registerPreference(String command, String translationKey, String fileName) {
+    private PlayerPercentages loadPercentagePreference(String fileName) {
         var preferences = new PlayerPercentages(getDataDirectory().resolve(fileName));
         try {
             preferences.load(getDataDirectory().resolveSibling("org.example_demo").resolve(fileName));
         } catch (IOException | IllegalArgumentException e) {
             getLogger().at(Level.WARNING).withCause(e).log("Could not load player preferences from %s", fileName);
         }
-        getCommandRegistry().registerCommand(
-                new PlayerPercentageCommand(command, "immersive_boats." + translationKey + ".", preferences));
         return preferences;
     }
 
