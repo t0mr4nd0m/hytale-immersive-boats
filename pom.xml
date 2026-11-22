@@ -101,6 +101,18 @@
                             <skip>${skipTests}</skip>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>test-boat-collisions</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>org.immersiveboats.BoatCollisionChecks</mainClass>
+                            <classpathScope>test</classpathScope>
+                            <skip>${skipTests}</skip>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <plugin>

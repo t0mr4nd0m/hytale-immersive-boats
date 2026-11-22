@@ -486,36 +486,57 @@ final class BoatInertiaSystem extends EntityTickingSystem<EntityStore> {
     private boolean contact(World world, CommandBuffer<EntityStore> commands, ArrayList<Obstacle> contacts,
                             BoatHull hull, Vector3d candidate, Vector3d velocity, double margin, boolean transfer,
                             boolean useCollisionBounds) {
-        var center = hull.center(candidate);
-        var normal = new Vector3d();
-        var relativeVelocity = new Vector3d();
+        var contact = new Contact(hull, candidate, velocity);
         var physics = settings.state();
         for (var other : contacts) {
             if (other.item) {
                 continue;
             }
             var otherHull = useCollisionBounds ? other.collisionHull : other.hull;
-            var delta = otherHull.center(other.position).sub(center);
             var target = other.boat ? commands.getComponent(other.ref, inertia) : null;
             boolean hasTargetVelocity = target != null && target.physics == physics;
-            relativeVelocity.set(velocity);
-            if (hasTargetVelocity) {
-                relativeVelocity.sub(target.contactVelocity);
-            }
-            if (hull.contactDepth(candidate, otherHull, other.position, delta, relativeVelocity, normal) < -margin) {
-                continue;
-            }
-            double closingSpeed = relativeVelocity.dot(normal);
-            if (closingSpeed <= CLOSING_SPEED_EPSILON) {
+            var targetVelocity = hasTargetVelocity ? target.contactVelocity : null;
+            double impulse = contact.impulse(otherHull, other.position, targetVelocity, margin);
+            if (impulse <= 0) {
                 continue;
             }
             if (transfer && hasTargetVelocity && navigable(world, other.position, other.hull)) {
-                double impulse = IMPACT_TRANSFER * closingSpeed;
-                applyImpact(commands, other.ref, target, normal, impulse, hull.impactLever(otherHull, delta, normal));
+                applyImpact(commands, other.ref, target, contact.normal, impulse,
+                        hull.impactLever(otherHull, contact.delta, contact.normal));
             }
             return true;
         }
         return false;
+    }
+
+    static final class Contact {
+        private final BoatHull hull;
+        private final Vector3d position;
+        private final Vector3d velocity;
+        private final Vector3d center;
+        private final Vector3d delta = new Vector3d();
+        private final Vector3d normal = new Vector3d();
+        private final Vector3d relativeVelocity = new Vector3d();
+
+        Contact(BoatHull hull, Vector3d position, Vector3d velocity) {
+            this.hull = hull;
+            this.position = position;
+            this.velocity = velocity;
+            center = hull.center(position);
+        }
+
+        double impulse(BoatHull other, Vector3d otherPosition, Vector3d targetVelocity, double margin) {
+            relativeVelocity.set(velocity);
+            if (targetVelocity != null) {
+                relativeVelocity.sub(targetVelocity);
+            }
+            delta.set(other.center(otherPosition)).sub(center);
+            if (hull.contactDepth(position, other, otherPosition, delta, relativeVelocity, normal) < -margin) {
+                return 0;
+            }
+            double closingSpeed = relativeVelocity.dot(normal);
+            return closingSpeed > CLOSING_SPEED_EPSILON ? IMPACT_TRANSFER * closingSpeed : 0;
+        }
     }
 
     private void applyImpact(CommandBuffer<EntityStore> commands, Ref<EntityStore> boat, Inertia state,
